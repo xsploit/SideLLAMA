@@ -1,12 +1,28 @@
-# SideLlama 🦙
+<div align="center">
+  <img src="https://raw.githubusercontent.com/xsploit/SideLLAMA/main/icons/icon128.png" alt="SideLlama Logo" width="128" height="128">
+  
+  # SideLlama 🦙
 
-**Advanced AI Assistant Chrome Extension with Ollama Integration**
+  **Advanced AI Assistant Chrome Extension with Ollama Integration**
 
-A powerful Chrome extension that brings the full capabilities of Ollama directly to your browser sidebar. Features intelligent model switching, advanced tool calling, vision support, and seamless web integration.
+  A powerful Chrome extension that brings the full capabilities of Ollama directly to your browser sidebar. Features intelligent model switching, advanced tool calling, vision support, and seamless web integration.
 
-[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chrome.google.com/webstore)
-[![Ollama](https://img.shields.io/badge/Ollama-Compatible-FF6B35?style=for-the-badge&logo=llama&logoColor=white)](https://ollama.ai)
-[![Manifest V3](https://img.shields.io/badge/Manifest-V3-00C853?style=for-the-badge&logo=google&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
+  [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chrome.google.com/webstore)
+  [![Ollama](https://img.shields.io/badge/Ollama-Compatible-FF6B35?style=for-the-badge&logo=llama&logoColor=white)](https://ollama.ai)
+  [![Manifest V3](https://img.shields.io/badge/Manifest-V3-00C853?style=for-the-badge&logo=google&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
+  [![GitHub](https://img.shields.io/github/stars/xsploit/SideLLAMA?style=for-the-badge&logo=github)](https://github.com/xsploit/SideLLAMA)
+  [![Version](https://img.shields.io/badge/Version-v2.0.0-blue?style=for-the-badge)](https://github.com/xsploit/SideLLAMA/releases)
+
+</div>
+
+## 📸 Screenshots
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/xsploit/SideLLAMA/main/icons/icon48.png" alt="SideLlama Interface" width="48">
+  <p><em>Professional AI assistant interface with smart model management</em></p>
+</div>
+
+> 🚀 **Live Demo**: Install the extension to experience the full feature set with your local Ollama models!
 
 ## ✨ Features
 
@@ -47,7 +63,7 @@ A powerful Chrome extension that brings the full capabilities of Ollama directly
 1. **Download Extension**
    ```bash
    # Download the latest release
-   wget https://github.com/yourusername/sidellama/releases/latest/SideLlama-v2.0.0-final-complete.zip
+   wget https://github.com/xsploit/SideLLAMA/releases/latest/download/SideLlama-v2.0.0-final-complete.zip
    ```
 
 2. **Install in Chrome**
@@ -140,8 +156,8 @@ SideLlama/
 ### Building from Source
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/sidellama.git
-cd sidellama
+git clone https://github.com/xsploit/SideLLAMA.git
+cd SideLLAMA
 
 # Install dependencies (if any)
 npm install
@@ -238,9 +254,10 @@ Models that support function calling:
 
 ## 🤝 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/sidellama/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/sidellama/discussions)
-- **Documentation**: [Wiki](https://github.com/yourusername/sidellama/wiki)
+- **Issues**: [GitHub Issues](https://github.com/xsploit/SideLLAMA/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/xsploit/SideLLAMA/discussions)
+- **Documentation**: [Wiki](https://github.com/xsploit/SideLLAMA/wiki)
+- **Releases**: [Latest Releases](https://github.com/xsploit/SideLLAMA/releases)
 
 ## 📄 License
 

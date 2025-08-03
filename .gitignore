@@ -5,6 +5,9 @@
 SideLlama-v*.zip
 ../SideLlama-*.zip
 
+# Git directory (for clean zips)
+.git/
+
 # Development and backup files
 sidepanel-old.js
 *copy*.html
