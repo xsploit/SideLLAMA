@@ -1,0 +1,81 @@
+{
+    "manifest_version": 3,
+    "name": "SideLlama",
+    "version": "2.0.0",
+    "description": "Advanced AI assistant with Ollama 2024 features: streaming tool calls, web search, and vision capabilities",
+    
+    "permissions": [
+        "activeTab",
+        "sidePanel",
+        "scripting",
+        "contextMenus",
+        "storage",
+        "tabs"
+    ],
+    
+    "host_permissions": [
+        "http://localhost:11434/*",
+        "https://api.duckduckgo.com/*",
+        "https://google.serper.dev/*",
+        "https://scrape.serper.dev/*",
+        "https://cdn.jsdelivr.net/*",
+        "https://*/*",
+        "http://*/*"
+    ],
+    
+    "background": {
+        "service_worker": "service-worker.js"
+    },
+    
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content-script.js"],
+            "run_at": "document_end"
+        }
+    ],
+    
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
+    
+    "action": {
+        "default_title": "Open SideLlama",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "32": "icons/icon32.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    
+    "icons": {
+        "16": "icons/icon16.png",
+        "32": "icons/icon32.png", 
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    
+    "commands": {
+        "open-sidellama": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+O"
+            },
+            "description": "Open SideLlama side panel"
+        },
+        "summarize-page": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+S"
+            },
+            "description": "Summarize current page with AI"
+        },
+        "explain-selection": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+E"
+            },
+            "description": "Explain selected text with AI"
+        }
+    },
+    
+    "options_page": "settings.html"
+}

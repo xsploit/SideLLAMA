@@ -1,0 +1,70 @@
+# SideLlama Chrome Extension - Git Ignore File
+
+# Build artifacts and packages
+*.zip
+SideLlama-v*.zip
+../SideLlama-*.zip
+
+# Development and backup files
+sidepanel-old.js
+*copy*.html
+*copy*.js
+*.backup
+error.txt
+.env
+
+# Analysis and documentation files (keep in repo but can ignore if desired)
+FINAL_CODE_ANALYSIS_REPORT.md
+FINAL_POST_FIX_ANALYSIS.md
+report.md
+
+# Claude AI assistant files
+.claude/
+*.claude
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node.js (if using build tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# API keys and sensitive data (already in .env)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Chrome extension specific
+# (Keep manifest.json and core files)
+
+# Backup directories
+backup/
+old/
+archive/
