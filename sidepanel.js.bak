@@ -617,15 +617,13 @@ class SideLlamaChat {
     }
 
     handleStreamingResponse(data) {
-        // Only create the message bubble if we receive actual content.
-        // This prevents creating a blank message for tool-only responses.
-        if (data.content && data.content.length > 0 && !this.streamingMessageElement) {
+        if (!this.streamingMessageElement) {
             this.prepareStreamingMessage();
         }
-
-        // If the streaming element exists, append content to it.
+        
         if (this.streamingMessageElement) {
             if (data.content && data.content.length > 0) {
+                // Store the accumulated content
                 if (!this.streamingContent) {
                     this.streamingContent = '';
                 }
@@ -635,22 +633,22 @@ class SideLlamaChat {
                 this.streamingMessageElement.innerHTML = this.formatText(this.streamingContent, true);
                 this.scrollToBottom();
             }
-        }
-
-        // When the stream is finished
-        if (data.done) {
-            // If a message bubble was created, finalize it.
-            if (this.streamingMessageElement) {
+            
+            if (data.done) {
+                // Check if this is a tool call interruption or actual completion
+                if (data.toolCallsDetected) {
+                    // Tool calls detected - pause streaming but don't finish
+                    // The same streaming container will be reused after tool execution
+                    console.log('🔧 Tool calls detected - pausing streaming in current container');
+                    return;
+                }
+                
+                // Streaming is complete - re-render with full markdown and cleanup
                 if (this.streamingContent) {
                     this.streamingMessageElement.innerHTML = this.formatText(this.streamingContent, false);
                     this.streamingMessageElement.classList.remove('streaming');
                 }
                 this.finishStreaming();
-            } else {
-                // If no bubble was created (e.g., tool-call-only response), just clean up.
-                this.hideTyping();
-                this.enableUserInput();
-                console.log('🦙 Streaming finished with only tool calls, no message bubble created.');
             }
         }
     }
@@ -894,7 +892,7 @@ class SideLlamaChat {
                     gfm: true,          // GitHub Flavored Markdown
                     sanitize: false,    // We'll handle sanitization ourselves
                     smartLists: true,   // Better list parsing
-                    smartypants: true, // Don't convert quotes/dashes
+                    smartypants: false, // Don't convert quotes/dashes
                     xhtml: false,       // Use HTML5 tags
                     pedantic: false     // Don't be overly strict
                 });

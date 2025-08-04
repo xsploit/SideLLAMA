@@ -721,6 +721,23 @@ class OllamaService {
                     } 
                 } 
             },
+            {
+                type: 'function',
+                function: {
+                    name: 'scrape',
+                    description: 'Scrapes a webpage for its content.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            url: {
+                                type: 'string',
+                                description: 'The URL of the webpage to scrape.'
+                            }
+                        },
+                        required: ['url']
+                    }
+                }
+            },
             { 
                 type: 'function', 
                 function: { 
@@ -740,10 +757,43 @@ class OllamaService {
         try {
             switch (name) {
                 case 'web_search': return await this.performWebSearch(args.query);
+                case 'scrape': return await this.scrapeWebpage(args.url);
                 case 'get_page_context': return await this.extractPageContext(tabId);
                 default: return { success: false, error: `Unknown tool: ${name}` };
             }
         } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async scrapeWebpage(url) {
+        try {
+            const apiKey = this.settings.serperApiKey;
+            if (!apiKey) {
+                throw new Error('Serper API key not configured. Please add your API key in settings.');
+            }
+
+            const myHeaders = new Headers();
+            myHeaders.append("X-API-KEY", apiKey);
+            myHeaders.append("Content-Type", "application/json");
+
+            const raw = JSON.stringify({ "url": url });
+
+            const requestOptions = {
+                method: "POST",
+                headers: myHeaders,
+                body: raw,
+                redirect: "follow"
+            };
+
+            const response = await fetch("https://scrape.serper.dev/", requestOptions);
+            if (!response.ok) {
+                throw new Error(`Scraping service error: ${response.status} ${response.statusText}`);
+            }
+            const text = await response.text();
+            return { success: true, result: text };
+        } catch (error) {
+            console.error('Scraping failed:', error);
             return { success: false, error: error.message };
         }
     }

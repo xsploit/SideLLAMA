@@ -1,0 +1,3 @@
+Question should we not be on a tool calll the inital message is sent....then the ai reponds  yes i eill search ewtc uses the tool but   │
+│    the tool response is a new messahe should it not be in the first one dont change anyting d:\SideLLAMA\content-script.js                 │
+│    d:\SideLLAMA\sidepanel.js         

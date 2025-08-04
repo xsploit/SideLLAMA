@@ -834,130 +834,166 @@
                 rgba(0, 0, 0, 0.4) 0px -5px 0px inset;
         }
         
-        /* =================== MARKDOWN STYLES (SEXY) =================== */
+        /* =================== MARKDOWN STYLES =================== */
         
-        /* General markdown container */
+        /* Markdown content styling */
         .markdown-content {
-            line-height: 1.7;
+            line-height: 1.6;
             word-wrap: break-word;
+        }
+        
+        /* Fix paragraph spacing in markdown */
+        .markdown-content p {
+            margin: 0.5em 0;
+        }
+        
+        .markdown-content p:first-child {
+            margin-top: 0;
+        }
+        
+        .markdown-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Headers */
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+            font-weight: 600;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
             color: var(--foreground);
         }
         
-        /* Paragraphs with better spacing */
-        .markdown-content p {
-            margin: 0.75em 0;
-        }
-        
-        /* Headers with style */
-        .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4, .markdown-content h5, .markdown-content h6 {
-            font-weight: 700;
-            margin-top: 1.8em;
-            margin-bottom: 0.6em;
-            color: var(--primary);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        }
-        
-        .markdown-content h1 { font-size: 1.6em; border-bottom: 2px solid var(--border); padding-bottom: 0.4em; }
-        .markdown-content h2 { font-size: 1.4em; border-bottom: 1px solid var(--border); padding-bottom: 0.4em; }
-        .markdown-content h3 { font-size: 1.3em; }
-        .markdown-content h4 { font-size: 1.2em; }
-        .markdown-content h5 { font-size: 1.1em; color: var(--muted-foreground); }
+        .markdown-content h1 { font-size: 1.5em; border-bottom: 2px solid var(--border); padding-bottom: 0.3em; }
+        .markdown-content h2 { font-size: 1.3em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+        .markdown-content h3 { font-size: 1.2em; }
+        .markdown-content h4 { font-size: 1.1em; }
+        .markdown-content h5 { font-size: 1.05em; }
         .markdown-content h6 { font-size: 1em; color: var(--muted-foreground); }
         
-        /* Code blocks with gradients and shadows */
+        /* Code blocks */
         .markdown-content pre {
-            background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
-            border: 1px solid #232425;
-            border-radius: 10px;
-            padding: 1.2em;
+            background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1em;
             overflow-x: auto;
-            margin: 1em 0;
-            box-shadow: 
-                inset 0 3px 5px rgba(0,0,0,0.4),
-                0 4px 8px rgba(0,0,0,0.2);
+            margin: 0.75em 0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
             white-space: pre-wrap;
             word-break: break-word;
         }
         
-        /* Inline code with a distinct look */
+        /* Fix first/last element margins in code blocks */
+        .markdown-content pre:first-child {
+            margin-top: 0;
+        }
+        
+        .markdown-content pre:last-child {
+            margin-bottom: 0;
+        }
+        
         .markdown-content code {
-            background: rgba(35, 36, 37, 0.5);
-            padding: 0.3em 0.5em;
-            border-radius: 6px;
-            font-family: 'Fira Code', 'Courier New', Courier, monospace;
+            background: rgba(35, 36, 37, 0.3);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
             font-size: 0.9em;
-            border: 1px solid #232425;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
         }
         
-        /* Blockquotes with a modern feel */
+        .markdown-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+        }
+        
+        /* Blockquotes */
         .markdown-content blockquote {
-            border-left: 5px solid var(--primary);
-            margin: 1em 0;
-            padding: 0.5em 1.2em;
+            border-left: 4px solid var(--accent);
+            margin: 0.5em 0;
+            padding: 0.1em 0 0.1em 1em;
             background: linear-gradient(145deg, var(--muted), var(--card));
+            font-style: italic;
             color: var(--muted-foreground);
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 0 6px 6px 0;
         }
         
-        /* Lists with better spacing and markers */
-        .markdown-content ul, .markdown-content ol {
-            margin: 1em 0;
-            padding-left: 2em;
+        /* Lists */
+        .markdown-content ul,
+        .markdown-content ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
         }
         
         .markdown-content li {
-            margin: 0.4em 0;
+            margin: 0.25em 0;
         }
         
-        /* Links with a cool hover effect */
+        /* Fix nested list spacing */
+        .markdown-content li > ul,
+        .markdown-content li > ol {
+            margin: 0.25em 0;
+        }
+        
+        /* Remove excessive spacing in tight lists */
+        .markdown-content ul > li:only-child,
+        .markdown-content ol > li:only-child {
+            margin: 0;
+        }
+        
+        /* Links */
         .markdown-content a {
-            color: #4a90e2;
+            color: #3b82f6;
             text-decoration: none;
-            border-bottom: 2px solid transparent;
-            transition: all 0.3s ease;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
         }
         
         .markdown-content a:hover {
-            color: #63a4ff;
-            border-bottom-color: #63a4ff;
-            text-shadow: 0 0 5px rgba(99, 164, 255, 0.5);
+            color: #60a5fa;
+            border-bottom-color: #60a5fa;
         }
         
-        /* Tables with a professional look */
+        /* Tables */
         .markdown-content table {
             width: 100%;
             border-collapse: collapse;
-            margin: 1.2em 0;
+            margin: 0.5em 0;
             background: var(--card);
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
-        .markdown-content th, .markdown-content td {
-            padding: 0.8em;
+        .markdown-content th,
+        .markdown-content td {
+            padding: 0.5em;
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
         
         .markdown-content th {
-            background: linear-gradient(145deg, var(--muted), var(--secondary));
-            font-weight: 700;
-            color: var(--primary);
+            background: var(--muted);
+            font-weight: 600;
+            color: var(--foreground);
         }
         
         .markdown-content tr:hover {
             background: var(--accent);
         }
         
-        /* Horizontal rule with a gradient */
+        /* Horizontal rule */
         .markdown-content hr {
             border: none;
-            height: 3px;
-            background: linear-gradient(to right, transparent, var(--primary), transparent);
-            margin: 1.5em 0;
+            height: 2px;
+            background: linear-gradient(to right, transparent, var(--border), transparent);
+            margin: 1em 0;
         }
         
         /* Images */
