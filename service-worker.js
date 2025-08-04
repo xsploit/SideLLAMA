@@ -714,6 +714,20 @@ class OllamaService {
     }
 
     async performWebSearch(query) {
+        await this.loadSettings(); // Ensure settings are up-to-date
+        const searchEngine = this.settings.searchEngine;
+
+        switch (searchEngine) {
+            case 'serper':
+                return this._performSerperSearch(query);
+            case 'duckduckgo':
+                return this._performDuckDuckGoSearch(query);
+            default:
+                return { success: false, error: `Unsupported search engine: ${searchEngine}` };
+        }
+    }
+
+    async _performSerperSearch(query) {
         try {
             const apiKey = this.settings.serperApiKey;
             if (!apiKey) {
@@ -730,6 +744,45 @@ class OllamaService {
             if (!response.ok) throw new Error(`Serper API error: ${response.status}`);
             const data = await response.json();
             return { success: true, result: data.organic || [] };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async _performDuckDuckGoSearch(query) {
+        try {
+            const sanitizedQuery = encodeURIComponent(this.sanitizeSearchQuery(query));
+            if (!sanitizedQuery) {
+                throw new Error('Invalid search query provided.');
+            }
+
+            const response = await fetch(`https://api.duckduckgo.com/?q=${sanitizedQuery}&format=json&pretty=1`);
+            if (!response.ok) throw new Error(`DuckDuckGo API error: ${response.status}`);
+            
+            const data = await response.json();
+            
+            const results = [];
+            if (data.AbstractText) {
+                results.push({
+                    title: data.Heading || 'Summary',
+                    snippet: data.AbstractText,
+                    link: data.AbstractURL || `https://duckduckgo.com/?q=${sanitizedQuery}`
+                });
+            }
+            
+            if (data.Results && Array.isArray(data.Results)) {
+                data.Results.forEach(res => {
+                    results.push({
+                        title: res.Text,
+                        snippet: res.Text, // DuckDuckGo API often repeats text as snippet
+                        link: res.FirstURL
+                    });
+                });
+            }
+
+            // Limit results to maxSearchResults setting
+            const maxResults = this.settings.maxSearchResults || 5;
+            return { success: true, result: results.slice(0, maxResults) };
         } catch (error) {
             return { success: false, error: error.message };
         }
