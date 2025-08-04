@@ -77,5 +77,15 @@
         }
     },
     
-    "options_page": "settings.html"
+    "options_page": "settings.html",
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "marked.min.js"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
 }
