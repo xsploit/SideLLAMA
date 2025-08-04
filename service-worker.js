@@ -932,7 +932,13 @@ class OllamaService {
             switch (action) {
                 case 'summarize':
                     userMessage = `📄 Summarize this page: ${context.title}`;
-                    prompt = `Please provide a concise summary of this webpage:\n\n**Title:** ${context.title}\n**URL:** ${context.url}\n\n**Content:**\n${context.content}`;
+                    prompt = `Please provide a concise summary of this webpage, focusing on the main arguments and key takeaways, in no more than 200 words. The content provided is an extract from the full page.
+
+**Title:** ${context.title}
+**URL:** ${context.url}
+
+**Content:**
+${context.content}`;
                     break;
                 
                 case 'explain':
@@ -941,7 +947,7 @@ class OllamaService {
                         return;
                     }
                     userMessage = `🔍 Explain: "${selectionText.substring(0, 50)}..."`;
-                    prompt = `Please explain this selected text from the webpage "${context.title}":\n\n**Selected Text:**\n"${selectionText}"\n\n**Page Context:**\n${context.content.substring(0, 2000)}`;
+                    prompt = `Please explain the meaning of this selected text in simple terms, clarifying any technical jargon, and describe its relevance within the context of the webpage titled "${context.title}". The provided page context is an excerpt.\n\n**Selected Text:**\n"${selectionText}"\n\n**Page Context:**\n${context.content.substring(0, 2000)}`
                     break;
                 
                 // Future actions can be added here
