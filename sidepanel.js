@@ -2032,7 +2032,7 @@ class SideLlamaChat {
         if (duration > 0) {
             setTimeout(() => {
                 if (statusBar.innerHTML === message) {
-                    statusBar.innerHTML = '🔍 Web search disabled';
+                    statusBar.innerHTML = 'Ready';
                 }
             }, duration);
         }
