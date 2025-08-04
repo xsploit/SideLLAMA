@@ -868,11 +868,11 @@ class SideLlamaChat {
         if (this.searchEnabled) {
             this.searchContainer.style.display = 'block';
             this.searchToggle.style.color = '#3b82f6';
-            this.addSystemMessage('🔍 Web search enabled');
+            this.updateStatusBar('🔍 Web search enabled', 0);
         } else {
             this.searchContainer.style.display = 'none';
             this.searchToggle.style.color = '';
-            this.addSystemMessage('🔍 Web search disabled');
+            this.updateStatusBar('🔍 Web search disabled', 0);
         }
     }
 
@@ -881,7 +881,7 @@ class SideLlamaChat {
         if (!query) return;
         
         try {
-            this.addSystemMessage(`🔍 Searching for: ${query}`);
+            this.updateStatusBar(`🔍 Searching for: ${query}`);
             
             const response = await this.sendChromeMessage({
                 type: 'WEB_SEARCH',
@@ -925,10 +925,10 @@ class SideLlamaChat {
                     this.showError('Failed to analyze search results: ' + (aiResponse.error || 'Unknown error'));
                 }
             } else {
-                this.addSystemMessage('❌ No search results found');
+                this.updateStatusBar('❌ No search results found');
             }
         } catch (error) {
-            this.showError('Search failed: ' + error.message);
+            this.updateStatusBar('❌ Search failed: ' + error.message);
         }
     }
 
@@ -2020,6 +2020,22 @@ class SideLlamaChat {
                 modelStatsElement.title = '';
             }
         }, 10000);
+    }
+
+    updateStatusBar(message, duration = 5000) {
+        const statusBar = document.getElementById('statusBar');
+        if (!statusBar) return;
+        
+        statusBar.innerHTML = message;
+        
+        // Clear status after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                if (statusBar.innerHTML === message) {
+                    statusBar.innerHTML = '🔍 Web search disabled';
+                }
+            }, duration);
+        }
     }
 
 }
