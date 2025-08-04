@@ -695,7 +695,7 @@ class OllamaService {
 
     getBuiltInTools() {
         return [
-            { type: 'function', function: { name: 'web_search', description: 'Search the web for current information', parameters: { type: 'object', properties: { query: { type: 'string', description: 'The search query' } }, required: ['query'] } } },
+            { type: 'function', function: { name: 'web_search', description: 'Accesses a web search engine to retrieve up-to-date information and relevant web pages. Use this tool when you need current facts, external data, or to verify information that is not part of your internal knowledge. Also use this tool when the user explicitly asks to "search for", "look up", or "find information about" a topic. The results will include titles, snippets, and URLs of relevant search results.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'The precise and concise search query to be executed. Formulate this as a set of keywords or a short phrase that accurately reflects the information you are seeking. Avoid conversational language.' } }, required: ['query'] } } },
             { type: 'function', function: { name: 'get_page_context', description: 'Get the context and content of the current webpage', parameters: { type: 'object', properties: {} } } }
         ];
     }
