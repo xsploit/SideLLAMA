@@ -116,9 +116,6 @@ class SideLlamaSettings {
         if (this.settings.autoRefreshModels) {
             this.startAutoRefresh();
         }
-        if (this.settings.autoRefreshModels) {
-            this.startAutoRefresh();
-        }
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
