@@ -511,8 +511,8 @@ class SideLlamaSettings {
                 console.warn('⚠️ JSON schema truncated to fit storage quota');
             }
             
-            if (settingsToSave.systemPrompt && settingsToSave.systemPrompt.length > 500) {
-                settingsToSave.systemPrompt = settingsToSave.systemPrompt.substring(0, 500);
+            if (settingsToSave.systemPrompt && settingsToSave.systemPrompt.length > 2000) {
+                settingsToSave.systemPrompt = settingsToSave.systemPrompt.substring(0, 2000);
                 console.warn('⚠️ System prompt truncated to fit storage quota');
             }
             
