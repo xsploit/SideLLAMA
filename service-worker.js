@@ -12,6 +12,7 @@ class OllamaService {
         this.requestCounter = 0; // Generate unique request IDs
         this.modelUsageStats = new Map(); // Track model usage for smart preloading
         this.lastUsedModels = []; // Keep track of recently used models
+        this.modelCache = { models: null, timestamp: 0, ttl: 30000 }; // 30 second cache
         this.initializeService();
     }
 
@@ -198,7 +199,13 @@ class OllamaService {
         }
     }
 
-    async loadModels() {
+    async loadModels(forceRefresh = false) {
+        // Check cache first to eliminate duplicate API calls
+        const now = Date.now();
+        if (!forceRefresh && this.modelCache.models && (now - this.modelCache.timestamp) < this.modelCache.ttl) {
+            return { success: true, models: this.modelCache.models };
+        }
+        
         try {
             const response = await fetch(`${this.baseURL}/api/tags`);
             const data = await response.json();
@@ -212,6 +219,13 @@ class OllamaService {
                 family: model.details?.family || 'unknown',
                 parameterSize: model.details?.parameter_size || 'unknown'
             }));
+            
+            // Update cache
+            this.modelCache = {
+                models: enhancedModels,
+                timestamp: now,
+                ttl: 30000
+            };
             
             return { success: true, models: enhancedModels };
         } catch (error) {
@@ -367,12 +381,14 @@ class OllamaService {
             apiMessages.push({ role: 'user', content: message });
         }
 
-        // Handle images (new imageAttachments format, legacy images array, or single image)
-        if (imageAttachments && imageAttachments.length > 0) {
-            const lastUserMessage = apiMessages[apiMessages.length - 1];
-            try {
-                // Convert data URLs to base64 for Ollama API
-                lastUserMessage.images = imageAttachments.map(att => {
+        // MODERATE FIX: Standardized image handling for all formats
+        const lastUserMessage = apiMessages[apiMessages.length - 1];
+        let processedImages = [];
+        
+        try {
+            // Process imageAttachments format (from UI)
+            if (imageAttachments && imageAttachments.length > 0) {
+                processedImages = imageAttachments.map(att => {
                     if (!att.dataUrl || !att.dataUrl.includes(',')) {
                         throw new Error(`Invalid image data URL format for ${att.filename || 'unknown file'}`);
                     }
@@ -382,15 +398,23 @@ class OllamaService {
                     }
                     return base64Data;
                 });
-            } catch (error) {
-                throw new Error(`Image processing failed: ${error.message}`);
             }
-        } else if (images && images.length > 0) {
-            const lastUserMessage = apiMessages[apiMessages.length - 1];
-            lastUserMessage.images = images;
-        } else if (image) {
-            const lastUserMessage = apiMessages[apiMessages.length - 1];
-            lastUserMessage.images = [image];
+            // Process legacy images array format
+            else if (images && images.length > 0) {
+                processedImages = Array.isArray(images) ? images : [images];
+            }
+            // Process single image format
+            else if (image) {
+                processedImages = [image];
+            }
+            
+            // Only add images if we have any
+            if (processedImages.length > 0) {
+                lastUserMessage.images = processedImages;
+                console.log(`🖼️ Added ${processedImages.length} images to message for model ${model}`);
+            }
+        } catch (error) {
+            throw new Error(`Image processing failed: ${error.message}`);
         }
 
         if (context) {
@@ -405,7 +429,13 @@ class OllamaService {
 
         // Only add tools if enabled in settings, model supports tools, and no images are present
         // Images and tools can't be used together in most vision models
-        const hasImages = apiMessages.some(msg => msg.images && msg.images.length > 0);
+        
+        // MODERATE FIX: Comprehensive image detection across all formats
+        const hasImages = apiMessages.some(msg => msg.images && msg.images.length > 0) ||
+                         (imageAttachments && imageAttachments.length > 0) ||
+                         (images && images.length > 0) ||
+                         (image !== undefined && image !== null);
+        
         const modelSupportsTools = ModelUtils.supportsTools(model);
         
         if (this.settings.enableToolCalls && modelSupportsTools && !hasImages) {
@@ -468,6 +498,16 @@ class OllamaService {
             const abortController = new AbortController();
             this.activeRequests.set(requestId, abortController);
             
+            // Debug: Log what we're sending to Ollama
+            const hasImagesInRequest = requestBody.messages.some(msg => msg.images && msg.images.length > 0);
+            console.log(`🚀 Sending request to Ollama:`, {
+                model: requestBody.model,
+                hasImages: hasImagesInRequest,
+                messageCount: requestBody.messages.length,
+                hasTools: !!requestBody.tools,
+                streaming: requestBody.stream
+            });
+            
             const response = await fetch(`${this.baseURL}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -501,7 +541,8 @@ class OllamaService {
             return { success: true };
         } catch (error) {
             if (error.name === 'AbortError') {
-                this.sendToSidePanel({ type: 'FINAL_RESPONSE', data: { success: false, error: 'Generation stopped by user' } });
+                // Don't send FINAL_RESPONSE for user-initiated stops - sidepanel handles this
+                console.log('🛑 Generation aborted by user');
                 return { success: false, error: 'Generation stopped by user' };
             }
             console.error('Failed to send message:', error);
@@ -617,7 +658,7 @@ class OllamaService {
         } catch (error) {
             if (error.name === 'AbortError' || error.message?.includes('aborted')) {
                 console.log('🛑 Stream aborted by user');
-                this.sendToSidePanel({ type: 'FINAL_RESPONSE', data: { success: false, error: 'Generation stopped by user' } });
+                // Don't send FINAL_RESPONSE for user-initiated stops - sidepanel handles this
             } else {
                 console.error('Streaming error:', error);
                 this.sendToSidePanel({ type: 'FINAL_RESPONSE', data: { success: false, error: error.message || 'Streaming error occurred' } });
@@ -753,25 +794,51 @@ class OllamaService {
         try {
             console.log('🖼️ Starting screenshot capture...', { tabId });
             
-            // Get the window ID from the tab if tabId is provided
-            let windowId = null;
+            // CRITICAL FIX: For sidepanel screenshots, we need to use a different approach
+            // because activeTab permission is not granted from sidepanel button clicks
+            
+            let targetTab = null;
             if (tabId) {
-                const tab = await chrome.tabs.get(tabId);
-                windowId = tab.windowId;
+                targetTab = await chrome.tabs.get(tabId);
+            } else {
+                // Get the current active tab if no tabId provided
+                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tabs.length === 0) {
+                    throw new Error('No active tab found');
+                }
+                targetTab = tabs[0];
             }
             
-            // chrome.tabs.captureVisibleTab captures the active tab in the specified window
-            const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { 
-                format: 'png', 
-                quality: 90 
-            });
+            console.log('📋 Capturing screenshot for tab:', targetTab.id, 'in window:', targetTab.windowId);
             
-            if (!dataUrl) {
-                throw new Error('Failed to capture screenshot - no data returned');
+            // Try to capture screenshot - this works for context menu (has activeTab)
+            // but may fail for sidepanel button (no activeTab)
+            try {
+                const dataUrl = await chrome.tabs.captureVisibleTab(targetTab.windowId, { 
+                    format: 'png', 
+                    quality: this.settings.screenshotQuality || 90 
+                });
+                
+                if (dataUrl) {
+                    console.log('✅ Screenshot captured successfully, size:', dataUrl.length);
+                    return { success: true, result: { dataUrl } };
+                }
+            } catch (permissionError) {
+                console.log('⚠️ Direct screenshot failed, trying alternative approach:', permissionError.message);
+                
+                // FALLBACK: Use content script to request user interaction
+                // This will prompt the user to grant permission
+                if (permissionError.message.includes('activeTab') || permissionError.message.includes('permission')) {
+                    return { 
+                        success: false, 
+                        error: 'Screenshot requires permission. Please use the right-click context menu "Take Screenshot" option, or ensure you have tabs permission.',
+                        needsPermission: true
+                    };
+                }
+                throw permissionError;
             }
             
-            console.log('✅ Screenshot captured successfully, size:', dataUrl.length);
-            return { success: true, result: { dataUrl } };
+            throw new Error('Failed to capture screenshot - no data returned');
         } catch (error) {
             console.error('❌ Screenshot error:', error);
             
@@ -795,6 +862,62 @@ class OllamaService {
                 console.error('Send to sidepanel error:', err);
             }
         });
+    }
+
+    async handlePageAction(action, tab, selectionText = '') {
+        try {
+            const contextResult = await this.extractPageContext(tab.id);
+            if (!contextResult.success) {
+                this.sendToSidePanel({ type: 'SYSTEM_MESSAGE', data: `❌ Failed to get page context: ${contextResult.error}` });
+                return;
+            }
+
+            const context = contextResult.context;
+            let userMessage = '';
+            let prompt = '';
+
+            switch (action) {
+                case 'summarize':
+                    userMessage = `📄 Summarize this page: ${context.title}`;
+                    prompt = `Please provide a concise summary of this webpage:\n\n**Title:** ${context.title}\n**URL:** ${context.url}\n\n**Content:**\n${context.content}`;
+                    break;
+                
+                case 'explain':
+                    if (!selectionText) {
+                        this.sendToSidePanel({ type: 'SYSTEM_MESSAGE', data: '❌ No text selected for explanation' });
+                        return;
+                    }
+                    userMessage = `🔍 Explain: "${selectionText.substring(0, 50)}..."`;
+                    prompt = `Please explain this selected text from the webpage "${context.title}":\n\n**Selected Text:**\n"${selectionText}"\n\n**Page Context:**\n${context.content.substring(0, 2000)}`;
+                    break;
+                
+                // Future actions can be added here
+                default:
+                    console.warn(`Unknown page action: ${action}`);
+                    return;
+            }
+
+            // Send messages to the sidepanel to update the UI and trigger the AI request
+            this.sendToSidePanel({
+                type: 'ADD_USER_MESSAGE',
+                data: { message: userMessage }
+            });
+            
+            this.sendToSidePanel({
+                type: 'SEND_AI_MESSAGE',
+                data: { 
+                    message: prompt,
+                    context: context
+                }
+            });
+
+        } catch (error) {
+            console.error(`Failed to execute page action '${action}':`, error);
+            this.sendToSidePanel({
+                type: 'SYSTEM_MESSAGE',
+                data: `❌ Failed to ${action} page: ${error.message}`
+            });
+        }
     }
 }
 
@@ -967,87 +1090,17 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     await chrome.sidePanel.open({ tabId: tab.id });
     
-    // Give the sidepanel time to load
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     switch (info.menuItemId) {
         case 'sidellama-open':
             // Just opening the panel is enough
             break;
             
         case 'sidellama-summarize':
-            try {
-                // Extract page context
-                const contextResult = await ollamaService.extractPageContext(tab.id);
-                if (contextResult.success) {
-                    const context = contextResult.context;
-                    const summaryPrompt = `Please provide a concise summary of this webpage:\n\n**Title:** ${context.title}\n**URL:** ${context.url}\n\n**Content:**\n${context.content}`;
-                    
-                    // Send the message directly to sidepanel as if user typed it
-                    ollamaService.sendToSidePanel({
-                        type: 'ADD_USER_MESSAGE',
-                        data: { message: `📄 Summarize this page: ${context.title}` }
-                    });
-                    
-                    // Send AI request using current conversation
-                    ollamaService.sendToSidePanel({
-                        type: 'SEND_AI_MESSAGE',
-                        data: { 
-                            message: summaryPrompt,
-                            context: context
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Failed to summarize page:', error);
-                ollamaService.sendToSidePanel({
-                    type: 'SYSTEM_MESSAGE',
-                    data: `❌ Failed to summarize page: ${error.message}`
-                });
-            }
+            ollamaService.handlePageAction('summarize', tab);
             break;
             
         case 'sidellama-explain':
-            if (info.selectionText) {
-                try {
-                    console.log('Explaining selection:', info.selectionText);
-                    
-                    // Get page context for better explanation
-                    const contextResult = await ollamaService.extractPageContext(tab.id);
-                    const context = contextResult.success ? contextResult.context : { title: 'Unknown Page', content: '' };
-                    
-                    console.log('Got context for explanation:', context.title);
-                    
-                    const explanationPrompt = `Please explain this selected text from the webpage "${context.title}":\n\n**Selected Text:**\n"${info.selectionText}"\n\n**Page Context:**\n${context.content.substring(0, 2000)}`;
-                    
-                    // Send the user message to sidepanel chat
-                    ollamaService.sendToSidePanel({
-                        type: 'ADD_USER_MESSAGE',
-                        data: { message: `🔍 Explain: "${info.selectionText}"` }
-                    });
-                    
-                    // Send AI request using current conversation
-                    ollamaService.sendToSidePanel({
-                        type: 'SEND_AI_MESSAGE',
-                        data: { 
-                            message: explanationPrompt,
-                            context: context
-                        }
-                    });
-                } catch (error) {
-                    console.error('Failed to explain selection:', error);
-                    ollamaService.sendToSidePanel({
-                        type: 'SYSTEM_MESSAGE',
-                        data: `❌ Failed to explain selection: ${error.message}`
-                    });
-                }
-            } else {
-                console.log('No selection text found');
-                ollamaService.sendToSidePanel({
-                    type: 'SYSTEM_MESSAGE',
-                    data: '❌ No text selected for explanation'
-                });
-            }
+            ollamaService.handlePageAction('explain', tab, info.selectionText);
             break;
         
         case 'sidellama-screenshot':
@@ -1057,9 +1110,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 console.log('Screenshot result:', screenshotResult);
                 
                 if (screenshotResult.success) {
-                    // Send screenshot to sidepanel
+                    // CRITICAL FIX: Send screenshot data to sidepanel properly
                     ollamaService.sendToSidePanel({
-                        type: 'DISPLAY_SCREENSHOT',
+                        type: 'CONTEXT_MENU_SCREENSHOT',
                         dataUrl: screenshotResult.result.dataUrl
                     });
                 } else {
@@ -1079,6 +1132,38 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 });
             }
             break;
+    }
+});
+
+// Chrome Commands (Keyboard Shortcuts) Handler
+chrome.commands.onCommand.addListener(async (command) => {
+    console.log(`🎹 Command triggered: ${command}`);
+    
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab) return;
+
+    switch (command) {
+        case 'open-sidellama':
+            await chrome.sidePanel.open({ tabId: activeTab.id });
+            console.log('✅ SideLlama panel opened via keyboard shortcut');
+            break;
+            
+        case 'summarize-page':
+            await chrome.sidePanel.open({ tabId: activeTab.id });
+            ollamaService.handlePageAction('summarize', activeTab);
+            break;
+            
+        case 'explain-selection':
+            const [result] = await chrome.scripting.executeScript({
+                target: { tabId: activeTab.id },
+                function: () => window.getSelection().toString().trim()
+            });
+            await chrome.sidePanel.open({ tabId: activeTab.id });
+            ollamaService.handlePageAction('explain', activeTab, result.result);
+            break;
+            
+        default:
+            console.warn(`Unknown command: ${command}`);
     }
 });
 

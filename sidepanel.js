@@ -5,6 +5,7 @@ class SideLlamaChat {
         this.currentConversationId = 'conv_' + Date.now();
         this.currentModel = 'qwen2.5:7b'; // Default fallback, will be updated from settings
         this.isTyping = false;
+        this.currentlySendingMessage = false; // Track if we're in the middle of sendMessage()
         
         // Track event listeners for cleanup
         this.eventListeners = new Map();
@@ -54,7 +55,6 @@ class SideLlamaChat {
         // Toolbar buttons
         this.contextToggle = document.getElementById('contextToggle');
         this.searchToggle = document.getElementById('searchToggle');
-        this.screenshotBtn = document.getElementById('screenshotBtn');
         
         // Other elements
         this.fileInput = document.getElementById('fileInput');
@@ -261,9 +261,6 @@ class SideLlamaChat {
             this.toggleWebSearch();
         });
         
-        this.addEventListenerTracked(this.screenshotBtn, 'click', () => {
-            this.takeScreenshot();
-        });
         
         // File input events
         this.addEventListenerTracked(this.fileInput, 'change', (e) => {
@@ -408,6 +405,30 @@ class SideLlamaChat {
                     case 'MODEL_PULL_PROGRESS':
                         this.handleModelPullProgress(message.data);
                         break;
+                    case 'CONTEXT_MENU_SCREENSHOT':
+                        const attachmentId = `attachment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                        const filename = `screenshot-${timestamp}.png`;
+                        const dataUrl = message.dataUrl;
+
+                        // Estimate size from dataUrl length (base64 is ~4/3 of original size)
+                        const size = dataUrl.length * 0.75;
+
+                        const attachment = {
+                            id: attachmentId,
+                            file: null, // No file object available
+                            filename: filename,
+                            type: 'image/png',
+                            dataUrl: dataUrl,
+                            size: size,
+                            isTextFile: false
+                        };
+                        
+                        this.pendingAttachments.push(attachment);
+                        this.renderAttachmentPreview(attachment);
+                        this.showAttachmentsPreview();
+                        this.addSystemMessage('📸 Screenshot added to message input.');
+                        break;
                 }
             }
             catch (error) {
@@ -518,6 +539,8 @@ class SideLlamaChat {
     }
     
     finishStreaming() {
+        // CRITICAL FIX: Clear sending flag when streaming is complete
+        this.currentlySendingMessage = false;
         // Clean up streaming state
         this.hideTyping();  // This will hide stop button and show send button
         this.hideThinkingIndicator();
@@ -598,6 +621,8 @@ class SideLlamaChat {
     }
 
     handleUnifiedResponse(data) {
+        // CRITICAL FIX: Clear sending flag when response is complete
+        this.currentlySendingMessage = false;
         this.hideTyping();
         this.hideContextStatus();
         this.enableUserInput(); // Re-enable input for non-streaming responses
@@ -753,6 +778,11 @@ class SideLlamaChat {
     }
     
     showError(message) {
+        // Skip showing user-initiated stop messages as errors since we handle them separately
+        if (typeof message === 'string' && message.includes('Generation stopped by user')) {
+            return; // Don't show user stops as errors
+        }
+        
         // Clean up the error message to prevent duplication
         let cleanMessage = message;
         if (typeof message === 'string') {
@@ -768,12 +798,32 @@ class SideLlamaChat {
         this.searchContainer.style.display = this.searchContainer.style.display === 'none' ? 'block' : 'none';
     }
     
-    async sendChromeMessage(message) {
+    async sendChromeMessage(message, options = {}) {
+        const { 
+            expectSuccess = false, 
+            showErrorToUser = false, 
+            customErrorMessage = null 
+        } = options;
+        
         return new Promise((resolve, reject) => {
             chrome.runtime.sendMessage(message, (response) => {
                 if (chrome.runtime.lastError) {
-                    return reject(new Error(chrome.runtime.lastError.message));
+                    const error = new Error(chrome.runtime.lastError.message);
+                    if (showErrorToUser) {
+                        this.showError(customErrorMessage || error.message);
+                    }
+                    return reject(error);
                 }
+                
+                // Auto-handle success checking and error display
+                if (expectSuccess && response && !response.success) {
+                    const error = new Error(response.error || 'Operation failed');
+                    if (showErrorToUser) {
+                        this.showError(customErrorMessage || response.error || 'Operation failed');
+                    }
+                    return reject(error);
+                }
+                
                 resolve(response);
             });
         });
@@ -962,7 +1012,71 @@ class SideLlamaChat {
                     this.addSystemMessage('💡 Tip: Use a vision model like qwen2-vl:7b or llava for automatic image analysis');
                 }
             } else {
-                this.showError('Screenshot failed: ' + (response.error || 'Unknown error'));
+                // Check if it's a permission issue
+                if (response.needsPermission) {
+                    this.showError('📸 Screenshot permission needed: Please right-click on the page and select "SideLlama → Take Screenshot" to grant permission.');
+                    this.addSystemMessage('💡 Tip: Context menu screenshots work because they automatically grant the required permissions.');
+                } else {
+                    this.showError('Screenshot failed: ' + (response.error || 'Unknown error'));
+                }
+            }
+        } catch (error) {
+            this.showError('Screenshot failed: ' + error.message);
+        }
+    }
+
+    // Screenshot Methods - Used by context menu
+    async takeScreenshot() {
+        try {
+            this.addSystemMessage('📸 Taking screenshot...');
+            
+            const response = await this.sendChromeMessage({
+                type: 'TAKE_SCREENSHOT'
+            });
+            
+            if (response.success) {
+                // Auto-paste screenshot into chat for AI analysis
+                this.addUserMessageWithAttachments('📸 Screenshot captured - please analyze this image');
+                
+                // Send screenshot to AI for analysis if using vision model
+                const supportsVision = this.currentModel.toLowerCase().includes('vision') || 
+                                      this.currentModel.toLowerCase().includes('llava') ||
+                                      this.currentModel.toLowerCase().includes('qwen2-vl');
+                
+                if (supportsVision) {
+                    this.disableUserInput();
+                    this.showTyping();
+                    
+                    const aiResponse = await this.sendChromeMessage({
+                        type: 'SEND_MESSAGE',
+                        data: {
+                            message: 'Please analyze this screenshot and describe what you see.',
+                            model: this.currentModel,
+                            conversationId: this.currentConversationId,
+                            stream: this.settings.streamingEnabled,
+                            messages: this.messages,
+                            images: [response.result.dataUrl.split(',')[1]]
+                        }
+                    });
+                    
+                    if (!aiResponse.success) {
+                        this.hideTyping();
+                        this.enableUserInput();
+                        this.showError('Failed to analyze screenshot: ' + (aiResponse.error || 'Unknown error'));
+                    }
+                } else {
+                    // If not a vision model, just display the screenshot
+                    this.displayScreenshot(response.result.dataUrl);
+                    this.addSystemMessage('💡 Tip: Use a vision model like qwen2-vl:7b or llava for automatic image analysis');
+                }
+            } else {
+                // Check if it's a permission issue
+                if (response.needsPermission) {
+                    this.showError('📸 Screenshot permission needed: Please right-click on the page and select "SideLlama → Take Screenshot" to grant permission.');
+                    this.addSystemMessage('💡 Tip: Context menu screenshots work because they automatically grant the required permissions.');
+                } else {
+                    this.showError('Screenshot failed: ' + (response.error || 'Unknown error'));
+                }
             }
         } catch (error) {
             this.showError('Screenshot failed: ' + error.message);
@@ -1251,15 +1365,15 @@ class SideLlamaChat {
 
     async showModelSelector() {
         try {
-            // Get current models
-            const response = await this.sendChromeMessage({ type: 'GET_MODELS' });
-            if (response.success) {
-                this.displayModelSelector(response.models);
-            } else {
-                this.showError('Failed to load models: ' + response.error);
-            }
+            // Get current models using enhanced sendChromeMessage
+            const response = await this.sendChromeMessage(
+                { type: 'GET_MODELS' }, 
+                { expectSuccess: true, showErrorToUser: true, customErrorMessage: 'Failed to load models' }
+            );
+            this.displayModelSelector(response.models);
         } catch (error) {
-            this.showError('Failed to load models: ' + error.message);
+            // Error already shown to user by sendChromeMessage
+            console.error('Model loading failed:', error);
         }
     }
 
@@ -1404,6 +1518,15 @@ class SideLlamaChat {
     }
 
     async selectModel(modelName) {
+        // CRITICAL FIX: Only stop generation if we're switching models outside of a sendMessage() flow
+        // Don't stop generation if we're in the middle of sending a message (model auto-switch)
+        if (this.isTyping && !this.currentlySendingMessage) {
+            console.log('🛑 Stopping generation before model switch');
+            await this.stopGeneration();
+        } else if (this.isTyping && this.currentlySendingMessage) {
+            console.log('🔄 Model switching during message send - not stopping generation');
+        }
+        
         this.currentModel = modelName;
         
         // Smart tool call auto-configuration based on model capabilities
@@ -1456,7 +1579,12 @@ class SideLlamaChat {
         // Only auto-configure if user hasn't manually overridden (default: auto-manage enabled)
         const autoManage = currentSettings.autoManageToolCalls !== false;
         
-        if (autoManage) {
+        // CRITICAL FIX: Add grace period to prevent overriding recent manual changes
+        const lastManualChange = currentSettings.lastManualToolCallsChange || 0;
+        const gracePeriod = 30000; // 30 seconds grace period
+        const recentManualChange = (Date.now() - lastManualChange) < gracePeriod;
+        
+        if (autoManage && !recentManualChange) {
             let newToolCallsState = currentSettings.enableToolCalls;
             let message = '';
             
@@ -1508,16 +1636,16 @@ class SideLlamaChat {
     
     async showQuickModelDropdown() {
         try {
-            // Get current models
-            const response = await this.sendChromeMessage({ type: 'GET_MODELS' });
-            if (response.success) {
-                this.populateQuickModelDropdown(response.models);
-                this.quickModelDropdown.classList.add('show');
-            } else {
-                this.showError('Failed to load models: ' + response.error);
-            }
+            // Get current models using enhanced sendChromeMessage
+            const response = await this.sendChromeMessage(
+                { type: 'GET_MODELS' }, 
+                { expectSuccess: true, showErrorToUser: true, customErrorMessage: 'Failed to load models' }
+            );
+            this.populateQuickModelDropdown(response.models);
+            this.quickModelDropdown.classList.add('show');
         } catch (error) {
-            this.showError('Failed to load models: ' + error.message);
+            // Error already shown to user by sendChromeMessage
+            console.error('Quick model loading failed:', error);
         }
     }
     
@@ -1570,6 +1698,14 @@ class SideLlamaChat {
     }
     
     async quickSelectModel(modelName) {
+        // CRITICAL FIX: Only stop generation if we're switching models outside of a sendMessage() flow
+        if (this.isTyping && !this.currentlySendingMessage) {
+            console.log('🛑 Stopping generation before quick model switch');
+            await this.stopGeneration();
+        } else if (this.isTyping && this.currentlySendingMessage) {
+            console.log('🔄 Quick model switching during message send - not stopping generation');
+        }
+        
         // Update current model
         this.currentModel = modelName;
         
@@ -1699,9 +1835,8 @@ class SideLlamaChat {
         const content = this.messageInput.value.trim();
         if (!content && this.pendingAttachments.length === 0) return;
 
-        // Add user message with attachments
-        this.addUserMessageWithAttachments(content);
-        this.messageInput.value = '';
+        // CRITICAL FIX: Mark that we're currently sending a message (prevents model switch from stopping)
+        this.currentlySendingMessage = true;
         
         // Disable user input while processing
         this.disableUserInput();
@@ -1735,6 +1870,77 @@ class SideLlamaChat {
                 messages: this.messages // Pass current conversation history
             };
             
+            // Debug: Check if we're using a vision model with images
+            if (this.pendingAttachments.length > 0) {
+                const hasImages = this.pendingAttachments.some(att => att.type.startsWith('image/'));
+                
+                if (hasImages) {
+                    // Get REAL model capabilities from Ollama API instead of guessing from name
+                    console.log(`🔍 Checking real model capabilities for: ${this.currentModel}`);
+                    const modelInfoResponse = await this.sendChromeMessage({ 
+                        type: 'GET_MODEL_INFO', 
+                        modelName: this.currentModel 
+                    });
+                    
+                    let isVisionModel = false;
+                    if (modelInfoResponse.success && modelInfoResponse.modelInfo.capabilities) {
+                        isVisionModel = modelInfoResponse.modelInfo.capabilities.includes('vision');
+                        console.log(`✅ Real API capabilities for ${this.currentModel}:`, modelInfoResponse.modelInfo.capabilities);
+                    } else {
+                        // Fallback to name-based detection if API fails
+                        isVisionModel = ModelUtils.supportsVision(this.currentModel);
+                        console.log(`⚠️ API failed for ${this.currentModel}, using fallback name-based detection: ${isVisionModel}`);
+                    }
+                    
+                    if (!isVisionModel) {
+                        console.warn(`❌ Model ${this.currentModel} does not support vision - auto-switching...`);
+                        
+                        // Try to auto-switch to a vision model
+                        const response = await this.sendChromeMessage({ type: 'GET_MODELS' });
+                        const availableModels = response.success ? response.models : [];
+                        
+                        // Find vision models using REAL API capabilities
+                        const visionModels = [];
+                        for (const model of availableModels) {
+                            const modelInfo = await this.sendChromeMessage({ 
+                                type: 'GET_MODEL_INFO', 
+                                modelName: model.name 
+                            });
+                            if (modelInfo.success && modelInfo.modelInfo.capabilities?.includes('vision')) {
+                                visionModels.push(model);
+                                console.log(`✅ Found vision model: ${model.name}`);
+                            }
+                        }
+                        
+                        if (visionModels.length > 0) {
+                            const suggestedModel = visionModels[0].name;
+                            console.log(`🔄 Auto-switching from ${this.currentModel} to vision model: ${suggestedModel}`);
+                            
+                            // Switch to the vision model
+                            await this.selectModel(suggestedModel);
+                            
+                            // CRITICAL FIX: Update messageData model
+                            messageData.model = suggestedModel;
+                            
+                            this.showContextStatus(`✅ Switched to vision model "${suggestedModel}" for image processing`);
+                            console.log(`✅ Model switch completed - now using: ${this.currentModel}`);
+                        } else {
+                            // No vision models available - show error and prevent sending
+                            this.showError(`❌ No vision models available. Please install a vision model like llava:latest, llava:7b, or qwen2-vl:latest.`);
+                            this.enableUserInput();
+                            this.clearAttachments();
+                            return;
+                        }
+                    } else {
+                        console.log(`✅ Model ${this.currentModel} supports vision - proceeding with image processing`);
+                    }
+                }
+            }
+
+            // Add user message with attachments after model switching logic
+            this.addUserMessageWithAttachments(content);
+            this.messageInput.value = '';
+            
             // Add context if enabled
             if (this.contextEnabled && this.currentContext) {
                 messageData.context = this.currentContext;
@@ -1765,6 +1971,8 @@ class SideLlamaChat {
             }
             // Success case: just wait for STREAMING_RESPONSE or FINAL_RESPONSE message
         } catch (error) {
+            // CRITICAL FIX: Clear sending flag on error
+            this.currentlySendingMessage = false;
             this.hideTyping();
             this.enableUserInput(); // Re-enable on error
             this.showError('Failed to send message: ' + error.message);

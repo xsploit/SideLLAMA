@@ -113,6 +113,12 @@ class SideLlamaSettings {
                 this.settings = { ...this.settings, ...stored.sideLlamaSettings };
             }
             this.updateUI();
+        if (this.settings.autoRefreshModels) {
+            this.startAutoRefresh();
+        }
+        if (this.settings.autoRefreshModels) {
+            this.startAutoRefresh();
+        }
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -178,6 +184,8 @@ class SideLlamaSettings {
         // Toggle switches
         this.toolCallsToggle.addEventListener('click', () => {
             this.settings.enableToolCalls = !this.settings.enableToolCalls;
+            // CRITICAL FIX: Track manual changes to prevent auto-override
+            this.settings.lastManualToolCallsChange = Date.now();
             this.updateToggle(this.toolCallsToggle, this.settings.enableToolCalls);
         });
 

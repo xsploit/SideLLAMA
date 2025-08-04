@@ -317,43 +317,9 @@
             .trim();
     }
 
-    // Enhanced keyboard shortcuts
-    function addKeyboardShortcuts() {
-        document.addEventListener('keydown', (event) => {
-            // Ctrl/Cmd + Shift + O to open SideLlama
-            if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'O') {
-                event.preventDefault();
-                chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
-            }
-            
-            // Ctrl/Cmd + Shift + S to summarize page
-            if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'S') {
-                event.preventDefault();
-                chrome.runtime.sendMessage({ type: 'SUMMARIZE_PAGE' });
-            }
-            
-            // Ctrl/Cmd + Shift + E to explain selection
-            if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'E') {
-                event.preventDefault();
-                const selection = window.getSelection().toString().trim();
-                if (selection) {
-                    chrome.runtime.sendMessage({ 
-                        type: 'EXPLAIN_SELECTION', 
-                        selection 
-                    });
-                }
-            }
-        });
-    }
+    // Keyboard shortcut handling removed - now handled centrally by service worker via Chrome Commands API
 
-    // Context menu support for selected text
-    function addContextMenuSupport() {
-        document.addEventListener('contextmenu', (event) => {
-            // Store the clicked element and selection for potential use
-            window.sideLlamaLastClickedElement = event.target;
-            window.sideLlamaLastSelection = window.getSelection().toString().trim();
-        });
-    }
+    // Context menu support removed - handled by service worker's onClicked listener
 
     // Auto-extract page context when page loads (for caching)
     function cachePageContext() {
@@ -373,40 +339,7 @@
         }
     }
 
-    // Handler functions for context menu actions
-    async function handlePageSummary() {
-        // Extract page content and send to service worker for AI processing
-        const pageData = await extractPageContent();
-        
-        // Send directly to service worker to add summary message to sidepanel
-        chrome.runtime.sendMessage({
-            type: 'SEND_MESSAGE',
-            data: {
-                message: `Please provide a concise summary of this webpage:\n\n**Title:** ${pageData.title}\n**URL:** ${pageData.url}\n**Type:** ${pageData.pageType}\n\n**Content:**\n${pageData.content}`,
-                model: 'qwen2.5:7b', // Default model
-                conversationId: 'context_' + Date.now(),
-                stream: false
-            }
-        });
-    }
-    
-    async function handleExplainSelection(selection) {
-        if (!selection) return;
-        
-        // Get page context for better explanation
-        const pageData = await extractPageContent();
-        
-        // Send explanation request to service worker
-        chrome.runtime.sendMessage({
-            type: 'SEND_MESSAGE',
-            data: {
-                message: `Please explain this selected text from the webpage "${pageData.title}":\n\n**Selected Text:**\n"${selection}"\n\n**Page Context:**\n${pageData.content.substring(0, 2000)}`,
-                model: 'qwen2.5:7b', // Default model
-                conversationId: 'context_' + Date.now(),
-                stream: false
-            }
-        });
-    }
+    // Duplicate handler functions removed - functionality now centralized in service worker
     
     function displayScreenshot(dataUrl) {
         // Create a floating screenshot preview
@@ -461,9 +394,7 @@
         document.body.appendChild(overlay);
     }
 
-    // Initialize all features
-    addKeyboardShortcuts();
-    addContextMenuSupport();
+    // Initialize remaining features
     cachePageContext();
 
     // Signal that the content script is ready
