@@ -787,7 +787,7 @@ class SideLlamaChat {
         
         if (role === 'user') {
             messageDiv.innerHTML = `
-                <div class="flex justify-end p-3">
+                <div class="flex justify-end p-2">
                     <div class="max-w-[80%] flex flex-col space-y-1">
                         <div class="bg-muted rounded-2xl rounded-br-sm px-4 py-2">
                             <div class="text-sm markdown-content">${this.formatText(content, false)}</div>
@@ -798,7 +798,7 @@ class SideLlamaChat {
             `;
         } else if (role === 'assistant') {
             messageDiv.innerHTML = `
-                <div class="flex flex-col gap-2 p-3">
+                <div class="flex flex-col gap-2 p-2">
                     <div class="flex items-center gap-2">
                         <div class="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs">🤖</div>
                         <div class="font-mono text-xs font-bold">${this.currentModel}</div>
@@ -811,7 +811,7 @@ class SideLlamaChat {
             `;
         } else if (role === 'system') {
             messageDiv.innerHTML = `
-                <div class="flex justify-center p-2">
+                <div class="flex justify-center p-1">
                     <div class="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full markdown-content">
                         ${this.formatText(content, false)}
                     </div>
@@ -888,16 +888,22 @@ class SideLlamaChat {
             // Configure Marked with security settings
             if (typeof marked !== 'undefined') {
                 marked.setOptions({
-                    breaks: true,
-                    gfm: true,
-                    sanitize: false, // We'll handle sanitization ourselves
-                    smartLists: true,
-                    smartypants: false,
-                    xhtml: false
+                    breaks: true,        // Convert single line breaks to <br>
+                    gfm: true,          // GitHub Flavored Markdown
+                    sanitize: false,    // We'll handle sanitization ourselves
+                    smartLists: true,   // Better list parsing
+                    smartypants: false, // Don't convert quotes/dashes
+                    xhtml: false,       // Use HTML5 tags
+                    pedantic: false     // Don't be overly strict
                 });
 
                 // Use Marked to parse the markdown
                 let html = marked.parse(text);
+                
+                // Fix spacing issues by normalizing whitespace
+                html = html.replace(/\n+/g, '\n');  // Remove excessive newlines
+                html = html.replace(/\s+/g, ' ');   // Normalize whitespace within lines
+                html = html.replace(/>\s+</g, '><'); // Remove spaces between tags
                 
                 // Post-process for security: sanitize URLs
                 html = html.replace(/href="([^"]*)"/g, (match, url) => {
