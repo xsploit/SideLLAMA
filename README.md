@@ -18,8 +18,8 @@
 ## 📸 Screenshots
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/xsploit/SideLLAMA/main/icons/icon48.png" alt="SideLlama Interface" width="48">
-  <p><em>Professional AI assistant interface with smart model management</em></p>
+  <img src="https://github.com/xsploit/SideLLAMA/blob/main/Screenshot%202025-08-03%20223305.png" alt="SideLlama Interface" width="400">
+  <p><em>The SideLlama interface, showing a conversation with the AI.</em></p>
 </div>
 
 > 🚀 **Live Demo**: Install the extension to experience the full feature set with your local Ollama models!
