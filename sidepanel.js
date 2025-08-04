@@ -18,6 +18,7 @@ class SideLlamaChat {
         
         // Simple streaming system (like working old version)
         this.streamingMessageElement = null;
+        this.streamingContent = '';
         
         // Attachment system
         this.pendingAttachments = [];
@@ -575,23 +576,23 @@ class SideLlamaChat {
     // ===== SIMPLE STREAMING SYSTEM (WORKING VERSION) =====
     
     prepareStreamingMessage() {
-        // Create streaming message element (like old working version)
+        // Reset streaming content
+        this.streamingContent = '';
+        
+        // Create streaming message element using markdown-enabled structure
         const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-item';
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
         messageDiv.innerHTML = `
             <div class="flex flex-col gap-2 p-3">
                 <div class="flex items-center gap-2">
-                    <span class="relative flex shrink-0 overflow-hidden ring-border size-6 rounded-lg bg-white p-0.5 ring">
-                        <div class="aspect-square size-full bg-blue-500 rounded flex items-center justify-center text-white text-xs">
-                            🤖
-                        </div>
-                    </span>
+                    <div class="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs">🤖</div>
                     <div class="font-mono text-xs font-bold">${this.currentModel}</div>
+                    <div class="text-xs text-muted-foreground ml-auto">${timestamp}</div>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <div class="text-sm">
-                        <p class="mb-4 whitespace-pre-wrap last:mb-0 streaming-content"></p>
-                    </div>
-                    <div class="text-muted-foreground text-xs">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                <div class="message-content text-sm">
+                    <div class="content-text markdown-content streaming"></div>
                 </div>
             </div>
         `;
@@ -603,7 +604,7 @@ class SideLlamaChat {
             this.messagesContainer.appendChild(messageDiv);
         }
         
-        this.streamingMessageElement = messageDiv.querySelector('.streaming-content');
+        this.streamingMessageElement = messageDiv.querySelector('.content-text');
         
         // Don't fully hide typing yet - keep stop button visible during streaming
         // Only hide the typing indicator dots, but keep stop button active
@@ -621,17 +622,24 @@ class SideLlamaChat {
         }
         
         if (this.streamingMessageElement) {
-            // Simple streaming - just add content to the message
-            
-            // For natural streaming, only append NEW content, not the full response
             if (data.content && data.content.length > 0) {
-                // Append only the new chunk for natural character-by-character display
-                this.streamingMessageElement.textContent += data.content;
+                // Store the accumulated content
+                if (!this.streamingContent) {
+                    this.streamingContent = '';
+                }
+                this.streamingContent += data.content;
+                
+                // Update the display with formatted markdown (streaming mode)
+                this.streamingMessageElement.innerHTML = this.formatText(this.streamingContent, true);
                 this.scrollToBottom();
             }
             
             if (data.done) {
-                // Streaming is complete - cleanup and re-enable input
+                // Streaming is complete - re-render with full markdown and cleanup
+                if (this.streamingContent) {
+                    this.streamingMessageElement.innerHTML = this.formatText(this.streamingContent, false);
+                    this.streamingMessageElement.classList.remove('streaming');
+                }
                 this.finishStreaming();
             }
         }
@@ -645,16 +653,17 @@ class SideLlamaChat {
         this.hideThinkingIndicator();
         
         // Save the final message to conversation history
-        if (this.streamingMessageElement && this.streamingMessageElement.textContent.trim()) {
+        if (this.streamingContent && this.streamingContent.trim()) {
             this.messages.push({ 
                 role: 'assistant', 
-                content: this.streamingMessageElement.textContent.trim(), 
+                content: this.streamingContent.trim(), 
                 timestamp: Date.now() 
             });
             this.saveConversationHistory();
         }
         
         this.streamingMessageElement = null;
+        this.streamingContent = '';
         this.enableUserInput();
         console.log('🦙 Streaming completed - input re-enabled');
     }
@@ -773,7 +782,7 @@ class SideLlamaChat {
                 <div class="flex justify-end p-3">
                     <div class="max-w-[80%] flex flex-col space-y-1">
                         <div class="bg-muted rounded-2xl rounded-br-sm px-4 py-2">
-                            <div class="text-sm whitespace-pre-wrap">${this.formatText(content)}</div>
+                            <div class="text-sm markdown-content">${this.formatText(content, false)}</div>
                         </div>
                         <div class="text-muted-foreground text-xs text-right">${timestamp}</div>
                     </div>
@@ -788,15 +797,15 @@ class SideLlamaChat {
                         <div class="text-xs text-muted-foreground ml-auto">${timestamp}</div>
                     </div>
                     <div class="message-content text-sm">
-                        <div class="content-text whitespace-pre-wrap ${options.streaming ? 'streaming' : ''} ${options.typing ? 'typing' : ''}">${this.formatText(content)}</div>
+                        <div class="content-text markdown-content ${options.streaming ? 'streaming' : ''} ${options.typing ? 'typing' : ''}">${this.formatText(content, options.streaming)}</div>
                     </div>
                 </div>
             `;
         } else if (role === 'system') {
             messageDiv.innerHTML = `
                 <div class="flex justify-center p-2">
-                    <div class="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                        ${this.formatText(content)}
+                    <div class="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full markdown-content">
+                        ${this.formatText(content, false)}
                     </div>
                 </div>
             `;
@@ -828,25 +837,80 @@ class SideLlamaChat {
         }
     }
     
-    formatText(text) {
+    formatText(text, isStreaming = false) {
         if (text === null || text === undefined) return '';
         
-        let html = this.escapeHtml(String(text))
-            .replace(/\*\*(.*?)\*\*/g, (match, content) => `<strong>${content}</strong>`)
-            .replace(/\*(.*?)\*/g, (match, content) => `<em>${content}</em>`)
-            .replace(/`(.*?)`/g, (match, content) => `<code style="background: hsl(var(--muted)); padding: 2px 4px; border-radius: 3px; font-family: monospace;">${content}</code>`)
+        const textStr = String(text);
+        
+        // For streaming content, we need to be more careful about partial markdown
+        if (isStreaming) {
+            return this.formatStreamingText(textStr);
+        }
+        
+        // For complete text, use full Marked.js processing
+        return this.formatCompleteText(textStr);
+    }
+
+    formatStreamingText(text) {
+        // During streaming, we can't use full markdown parsing because
+        // the content might be incomplete. Use basic formatting instead.
+        let html = this.escapeHtml(text);
+        
+        // Only apply basic formatting that works with partial content
+        html = html
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
             .replace(/\n/g, '<br>');
         
-        // Secure link handling with URL sanitization
+        // Basic link detection for streaming
         html = html.replace(/https?:\/\/[^\s<]+/g, (match) => {
             const sanitizedUrl = this.sanitizeUrl(match);
             if (sanitizedUrl) {
-                return `<a href="${sanitizedUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline;">${this.escapeHtml(match)}</a>`;
+                return `<a href="${sanitizedUrl}" target="_blank" rel="noopener noreferrer">${this.escapeHtml(match)}</a>`;
             }
-            return this.escapeHtml(match); // Return as plain text if invalid
+            return this.escapeHtml(match);
         });
         
         return html;
+    }
+
+    formatCompleteText(text) {
+        try {
+            // Configure Marked with security settings
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true,
+                    sanitize: false, // We'll handle sanitization ourselves
+                    smartLists: true,
+                    smartypants: false,
+                    xhtml: false
+                });
+
+                // Use Marked to parse the markdown
+                let html = marked.parse(text);
+                
+                // Post-process for security: sanitize URLs
+                html = html.replace(/href="([^"]*)"/g, (match, url) => {
+                    const sanitizedUrl = this.sanitizeUrl(url);
+                    return sanitizedUrl ? `href="${sanitizedUrl}"` : 'href="#"';
+                });
+                
+                // Add target="_blank" and rel="noopener noreferrer" to all links
+                html = html.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+                
+                return html;
+            } else {
+                // Fallback if Marked.js isn't loaded
+                console.warn('Marked.js not available, falling back to basic formatting');
+                return this.formatStreamingText(text);
+            }
+        } catch (error) {
+            console.error('Error parsing markdown:', error);
+            // Fallback to basic formatting on error
+            return this.formatStreamingText(text);
+        }
     }
 
     sanitizeUrl(url) {
@@ -2125,7 +2189,7 @@ class SideLlamaChat {
                 <div class="max-w-[80%] flex flex-col space-y-1">
                     <div class="bg-muted rounded-2xl rounded-br-sm px-4 py-2">
                         ${attachmentsHtml}
-                        ${content ? `<div class="text-sm whitespace-pre-wrap">${this.formatText(content)}</div>` : ''}
+                        ${content ? `<div class="text-sm markdown-content">${this.formatText(content, false)}</div>` : ''}
                     </div>
                     <div class="text-muted-foreground text-xs text-right">${timestamp}</div>
                 </div>
