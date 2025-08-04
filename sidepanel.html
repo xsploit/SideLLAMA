@@ -631,11 +631,19 @@
                     </div>
                 </div>
                 
-                <textarea 
-                    class="scrollbar-none min-h-[42px] w-full resize-none bg-transparent p-3 pb-1.5 text-sm outline-none" 
-                    placeholder="Ask something... (📎 Paste or drop images here)"
-                    id="messageInput"
-                ></textarea>
+                <div class="relative">
+                    <textarea 
+                        class="scrollbar-none min-h-[42px] w-full resize-none bg-transparent p-3 pb-1.5 pr-12 text-sm outline-none" 
+                        placeholder="Ask something... (📎 Paste or drop images here)"
+                        id="messageInput"
+                    ></textarea>
+                    <button class="absolute right-2 top-2 bg-primary text-primary-foreground inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium disabled:pointer-events-none disabled:opacity-50 size-8 cursor-pointer transition-all disabled:bg-gray-200 disabled:text-gray-400" id="sendButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                            <path d="m5 12 7-7 7 7"></path>
+                            <path d="M12 19V5"></path>
+                        </svg>
+                    </button>
+                </div>
                 <div class="flex items-center justify-between gap-2 px-3 pb-2">
                     <div class="flex items-center gap-2">
                         <label for="fileInput" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 cursor-pointer" id="attachBtn">
@@ -647,12 +655,9 @@
                         <input type="file" class="hidden" accept="image/*" multiple id="fileInput">
                     </div>
                     <div class="flex items-center gap-2">
-                        <button class="bg-primary text-primary-foreground inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium disabled:pointer-events-none disabled:opacity-50 size-8 cursor-pointer transition-all disabled:bg-gray-200 disabled:text-gray-400" id="sendButton">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                                <path d="m5 12 7-7 7 7"></path>
-                                <path d="M12 19V5"></path>
-                            </svg>
-                        </button>
+                        <div class="text-xs text-muted-foreground" id="tokenStats">
+                            📊 Ready
+                        </div>
                         <button class="bg-red-500 text-white inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium disabled:pointer-events-none disabled:opacity-50 size-8 cursor-pointer transition-all hidden" id="stopButton" title="Stop generation">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect width="6" height="6" x="9" y="9"></rect>

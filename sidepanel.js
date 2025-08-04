@@ -2003,21 +2003,21 @@ class SideLlamaChat {
     }
 
     displayPerformanceStats(stats) {
-        const modelStatsElement = document.getElementById('modelStats');
-        if (!modelStatsElement) return;
+        const tokenStatsElement = document.getElementById('tokenStats');
+        if (!tokenStatsElement) return;
 
         const { totalTime, timeToFirstToken, tokenCount, tokensPerSecond, model } = stats;
         
-        const perfDisplay = `📊 ${tokensPerSecond} t/s • ⏱️ ${Math.round(totalTime)}ms • 🔢 ${tokenCount} tokens`;
+        const perfDisplay = `📊 ${tokensPerSecond} t/s • ⏱️ ${Math.round(totalTime)}ms • 🔢 ${tokenCount}`;
         
-        modelStatsElement.innerHTML = perfDisplay;
-        modelStatsElement.title = `Model: ${model}\nTotal Time: ${Math.round(totalTime)}ms\nTime to First Token: ${Math.round(timeToFirstToken)}ms\nTokens: ${tokenCount}\nTokens/second: ${tokensPerSecond}`;
+        tokenStatsElement.innerHTML = perfDisplay;
+        tokenStatsElement.title = `Model: ${model}\nTotal Time: ${Math.round(totalTime)}ms\nTime to First Token: ${Math.round(timeToFirstToken)}ms\nTokens: ${tokenCount}\nTokens/second: ${tokensPerSecond}`;
         
         // Clear the performance stats after 10 seconds to show "Ready" again
         setTimeout(() => {
-            if (modelStatsElement.innerHTML === perfDisplay) {
-                modelStatsElement.innerHTML = 'Ready';
-                modelStatsElement.title = '';
+            if (tokenStatsElement.innerHTML === perfDisplay) {
+                tokenStatsElement.innerHTML = '📈 Ready';
+                tokenStatsElement.title = '';
             }
         }, 10000);
     }
