@@ -18,7 +18,7 @@
 ## 📸 Screenshots
 
 <div align="center">
-  <img src="d:\SideLLAMA\Screenshot 2025-08-03 223305.png" alt="SideLlama Interface" width="400">
+  <img src="https://github.com/xsploit/SideLLAMA/blob/main/Screenshot%202025-08-03%20223305.png" alt="SideLlama Interface" width="400">
   <p><em>The SideLlama interface, showing a conversation with the AI.</em></p>
 </div>
 
