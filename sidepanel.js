@@ -342,7 +342,7 @@ class SideLlamaChat {
             }
             const status = await this.sendChromeMessage({ type: 'CHECK_OLLAMA_STATUS' });
             if (status.status !== 'connected') {
-                this.showError('Ollama connection failed.');
+                this.updateStatusBar('❌ Ollama connection failed');
             }
             
             // Update UI with loaded model
@@ -354,7 +354,7 @@ class SideLlamaChat {
             // Initialize input placeholder
             this.updateInputPlaceholder();
         } catch (error) {
-            this.showError('Initialization failed.');
+            this.updateStatusBar('❌ Initialization failed');
             console.error(error);
         }
     }
@@ -436,7 +436,7 @@ class SideLlamaChat {
             }
             catch (error) {
                 console.error('Error handling message:', error);
-                this.showError('Error processing message.');
+                this.updateStatusBar('❌ Error processing message');
             }
             // No return true needed as we are not using sendResponse in the sidepanel
         });
@@ -446,7 +446,7 @@ class SideLlamaChat {
         const { action, selectionText } = data;
         const contextResult = await this.sendChromeMessage({ type: 'EXTRACT_PAGE_CONTEXT' });
         if (!contextResult.success) {
-            this.showError('Failed to get page context.');
+            this.updateStatusBar('❌ Failed to get page context');
             return;
         }
         const context = contextResult.context;
@@ -470,7 +470,7 @@ class SideLlamaChat {
                 data: { message: prompt, model: this.currentModel, messages: this.messages, context }
             }).catch(error => {
                 this.hideTyping();
-                this.showError(error.message);
+                this.updateStatusBar('❌ Context menu error: ' + error.message);
             });
         }
     }
@@ -2032,7 +2032,7 @@ class SideLlamaChat {
         if (duration > 0) {
             setTimeout(() => {
                 if (statusBar.innerHTML === message) {
-                    statusBar.innerHTML = 'Ready';
+                    statusBar.innerHTML = 'SideLlama';
                 }
             }, duration);
         }
