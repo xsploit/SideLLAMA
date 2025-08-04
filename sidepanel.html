@@ -584,7 +584,7 @@
             box-shadow: 
                 0 4px 6px -1px rgba(0, 0, 0, 0.1),
                 0 2px 4px -1px rgba(0, 0, 0, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         
         /* Enhanced buttons with depth and hover effects */
@@ -593,9 +593,9 @@
             box-shadow: 
                 0 1px 3px rgba(0, 0, 0, 0.1),
                 0 1px 2px rgba(0, 0, 0, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
         }
         
         button:hover, .button:hover {
@@ -603,7 +603,7 @@
             box-shadow: 
                 0 4px 6px -1px rgba(0, 0, 0, 0.15),
                 0 2px 4px -1px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
         
         button:active, .button:active {
@@ -639,7 +639,7 @@
             box-shadow: 
                 0 1px 3px rgba(0, 0, 0, 0.1),
                 0 1px 2px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
             backdrop-filter: blur(10px);
         }
         
@@ -648,7 +648,7 @@
             box-shadow: 
                 0 2px 4px rgba(59, 130, 246, 0.2),
                 0 1px 2px rgba(0, 0, 0, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
         
         .assistant-message {
@@ -664,7 +664,7 @@
             box-shadow: 
                 0 10px 15px -3px rgba(0, 0, 0, 0.1),
                 0 4px 6px -2px rgba(0, 0, 0, 0.05),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(16px);
         }
         
@@ -685,7 +685,7 @@
             border-bottom: 1px solid var(--border);
             box-shadow: 
                 0 1px 3px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         
         /* Attachment previews with style */
@@ -695,7 +695,7 @@
             background: linear-gradient(145deg, var(--card), var(--secondary));
             box-shadow: 
                 0 1px 3px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
             transition: all 0.2s ease;
         }
         
@@ -719,14 +719,14 @@
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             box-shadow: 
                 0 2px 4px rgba(59, 130, 246, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
         
         /* Glassy effects for modern look */
         .glass-effect {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--border);
         }
         
         /* Subtle animations */
@@ -751,7 +751,7 @@
             box-shadow: 
                 0 4px 6px -1px rgba(0, 0, 0, 0.4),
                 0 2px 4px -1px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         
         .dark .message {
