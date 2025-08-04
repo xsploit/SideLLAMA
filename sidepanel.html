@@ -125,6 +125,13 @@
             --sidebar-ring: #3b82f6;
         }
 
+        *, ::after, ::before {
+            box-sizing: border-box;
+            border-width: 0;
+            border-style: solid;
+            border-color: #232425;
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -584,7 +591,7 @@
             box-shadow: 
                 0 4px 6px -1px rgba(0, 0, 0, 0.1),
                 0 2px 4px -1px rgba(0, 0, 0, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                inset 0 1px 0 rgba(35, 36, 37, 0.3);
         }
         
         /* Enhanced buttons with depth and hover effects */
@@ -612,7 +619,7 @@
             border-radius: 10px;
             box-shadow: 
                 inset 0 2px 4px rgba(0, 0, 0, 0.06),
-                0 1px 2px rgba(255, 255, 255, 0.1);
+                0 1px 2px rgba(35, 36, 37, 0.2);
             transition: all 0.2s ease;
         }
         
@@ -669,7 +676,7 @@
             border-bottom: 1px solid var(--border);
             box-shadow: 
                 0 1px 3px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                inset 0 1px 0 rgba(35, 36, 37, 0.3);
         }
         
         /* Attachment previews with style */
@@ -691,7 +698,7 @@
             border-radius: 20px;
             box-shadow: 
                 inset 0 2px 4px rgba(0, 0, 0, 0.1),
-                0 1px 2px rgba(255, 255, 255, 0.1);
+                0 1px 2px rgba(35, 36, 37, 0.2);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
@@ -699,12 +706,12 @@
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             box-shadow: 
                 0 2px 4px rgba(59, 130, 246, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+                inset 0 1px 0 rgba(35, 36, 37, 0.25);
         }
         
         /* Glassy effects for modern look */
         .glass-effect {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(35, 36, 37, 0.15);
             backdrop-filter: blur(16px);
             border: 1px solid var(--border);
         }
@@ -724,14 +731,14 @@
             box-shadow: 
                 0 1px 3px rgba(0, 0, 0, 0.3),
                 0 1px 2px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                inset 0 1px 0 rgba(35, 36, 37, 0.3);
         }
         
         .dark button:hover, .dark .button:hover {
             box-shadow: 
                 0 4px 6px -1px rgba(0, 0, 0, 0.4),
                 0 2px 4px -1px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                inset 0 1px 0 rgba(35, 36, 37, 0.3);
         }
         
         .dark .message {
