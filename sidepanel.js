@@ -968,62 +968,6 @@ class SideLlamaChat {
     }
 
     // Screenshot Methods
-    async takeScreenshot() {
-        try {
-            this.addSystemMessage('📸 Taking screenshot...');
-            
-            const response = await this.sendChromeMessage({
-                type: 'TAKE_SCREENSHOT'
-            });
-            
-            if (response.success) {
-                // Auto-paste screenshot into chat for AI analysis
-                this.addUserMessageWithAttachments('📸 Screenshot captured - please analyze this image');
-                
-                // Send screenshot to AI for analysis if using vision model
-                const supportsVision = this.currentModel.toLowerCase().includes('vision') || 
-                                      this.currentModel.toLowerCase().includes('llava') ||
-                                      this.currentModel.toLowerCase().includes('qwen2-vl');
-                
-                if (supportsVision) {
-                    this.disableUserInput();
-                    this.showTyping();
-                    
-                    const aiResponse = await this.sendChromeMessage({
-                        type: 'SEND_MESSAGE',
-                        data: {
-                            message: 'Please analyze this screenshot and describe what you see.',
-                            model: this.currentModel,
-                            conversationId: this.currentConversationId,
-                            stream: this.settings.streamingEnabled,
-                            messages: this.messages,
-                            images: [response.result.dataUrl.split(',')[1]]
-                        }
-                    });
-                    
-                    if (!aiResponse.success) {
-                        this.hideTyping();
-                        this.enableUserInput();
-                        this.showError('Failed to analyze screenshot: ' + (aiResponse.error || 'Unknown error'));
-                    }
-                } else {
-                    // If not a vision model, just display the screenshot
-                    this.displayScreenshot(response.result.dataUrl);
-                    this.addSystemMessage('💡 Tip: Use a vision model like qwen2-vl:7b or llava for automatic image analysis');
-                }
-            } else {
-                // Check if it's a permission issue
-                if (response.needsPermission) {
-                    this.showError('📸 Screenshot permission needed: Please right-click on the page and select "SideLlama → Take Screenshot" to grant permission.');
-                    this.addSystemMessage('💡 Tip: Context menu screenshots work because they automatically grant the required permissions.');
-                } else {
-                    this.showError('Screenshot failed: ' + (response.error || 'Unknown error'));
-                }
-            }
-        } catch (error) {
-            this.showError('Screenshot failed: ' + error.message);
-        }
-    }
 
     // Screenshot Methods - Used by context menu
     async takeScreenshot() {
