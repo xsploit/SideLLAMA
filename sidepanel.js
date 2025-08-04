@@ -429,6 +429,9 @@ class SideLlamaChat {
                         this.showAttachmentsPreview();
                         this.addSystemMessage('📸 Screenshot added to message input.');
                         break;
+                    case 'PERFORMANCE_STATS':
+                        this.displayPerformanceStats(message.data);
+                        break;
                 }
             }
             catch (error) {
@@ -1997,6 +2000,26 @@ class SideLlamaChat {
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    displayPerformanceStats(stats) {
+        const modelStatsElement = document.getElementById('modelStats');
+        if (!modelStatsElement) return;
+
+        const { totalTime, timeToFirstToken, tokenCount, tokensPerSecond, model } = stats;
+        
+        const perfDisplay = `📊 ${tokensPerSecond} t/s • ⏱️ ${Math.round(totalTime)}ms • 🔢 ${tokenCount} tokens`;
+        
+        modelStatsElement.innerHTML = perfDisplay;
+        modelStatsElement.title = `Model: ${model}\nTotal Time: ${Math.round(totalTime)}ms\nTime to First Token: ${Math.round(timeToFirstToken)}ms\nTokens: ${tokenCount}\nTokens/second: ${tokensPerSecond}`;
+        
+        // Clear the performance stats after 10 seconds to show "Ready" again
+        setTimeout(() => {
+            if (modelStatsElement.innerHTML === perfDisplay) {
+                modelStatsElement.innerHTML = 'Ready';
+                modelStatsElement.title = '';
+            }
+        }, 10000);
     }
 
 }
