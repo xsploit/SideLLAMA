@@ -977,11 +977,18 @@
                 
                 <div class="relative">
                     <textarea 
-                        class="scrollbar-none min-h-[120px] w-full resize-none bg-transparent p-3 pb-1.5 pr-20 text-sm outline-none" 
+                        class="scrollbar-none min-h-[120px] w-full resize-none bg-transparent p-3 pb-1.5 pr-32 text-sm outline-none" 
                         placeholder=""
                         id="messageInput"
                     ></textarea>
                     <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+                        <label for="fileInput" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium size-8 cursor-pointer" id="attachBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-gray-500">
+                                <path d="M13.234 20.252 21 12.3"></path>
+                                <path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486"></path>
+                            </svg>
+                        </label>
+                        <input type="file" class="hidden" accept="image/*" multiple id="fileInput">
                         <button class="bg-red-500 text-white inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium disabled:pointer-events-none disabled:opacity-50 size-8 cursor-pointer transition-all hidden" id="stopButton" title="Stop generation">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect width="6" height="6" x="9" y="9"></rect>
@@ -995,14 +1002,11 @@
                         </button>
                     </div>
                 </div>
+                <!-- Status Bar -->
                 <div class="flex items-center justify-center gap-2 px-3 pb-2">
-                    <label for="fileInput" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 cursor-pointer" id="attachBtn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-gray-500">
-                            <path d="M13.234 20.252 21 12.3"></path>
-                            <path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486"></path>
-                        </svg>
-                    </label>
-                    <input type="file" class="hidden" accept="image/*" multiple id="fileInput">
+                    <div class="text-xs text-muted-foreground" id="statusBar">
+                        🔍 Web search disabled
+                    </div>
                 </div>
             </div>
         </div>
