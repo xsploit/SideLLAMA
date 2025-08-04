@@ -1730,19 +1730,19 @@ class SideLlamaChat {
     }
 
     async stopGeneration() {
-        this.hideTyping();
-        this.enableUserInput();
         try {
             const response = await this.sendChromeMessage({
                 type: 'STOP_GENERATION'
             });
             
+            this.hideTyping();
             if (response.success) {
                 this.addSystemMessage('⏹️ Generation stopped by user');
             } else {
                 this.addSystemMessage('⚠️ No active generation to stop');
             }
         } catch (error) {
+            this.hideTyping();
             this.addSystemMessage('❌ Failed to stop generation');
         }
     }
