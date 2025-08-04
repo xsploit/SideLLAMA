@@ -117,7 +117,7 @@ class OllamaService {
             enableThinking: true, // Enable thinking mode for compatible models
             defaultModel: 'qwen2.5:7b',
             streamingEnabled: true,
-            systemPrompt: 'You are a helpful AI assistant named SideLlama. You have the ability to use tools to answer questions. You can use web_search to find information on the web, and web_scrape to get the full content of a webpage. You can chain these tools together to answer complex questions.',
+            systemPrompt: 'You are a helpful AI assistant named SideLlama.',
             contextLength: 128000,
             searchEngine: 'serper',
             serperApiKey: '',
@@ -695,8 +695,7 @@ class OllamaService {
 
     getBuiltInTools() {
         return [
-            { type: 'function', function: { name: 'web_search', description: 'Accesses a web search engine to retrieve up-to-date information and relevant web pages. Use this tool when you need current facts, external data, or to verify information that is not part of your internal knowledge. Also use this tool when the user explicitly asks to "search for", "look up", or "find information about" a topic. The results will include titles, snippets, and URLs of relevant search results.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'The precise and concise search query to be executed. Formulate this as a set of keywords or a short phrase that accurately reflects the information you are seeking. Avoid conversational language.' } }, required: ['query'] } } },
-            { type: 'function', function: { name: 'web_scrape', description: 'Scrapes the content of a given URL. Use this to get the full content of a webpage found through web_search.', parameters: { type: 'object', properties: { url: { type: 'string', description: 'The URL of the page to scrape.' } }, required: ['url'] } } },
+                        { type: 'function', function: { name: 'web_search', description: 'Accesses a web search engine to retrieve up-to-date information and relevant web pages. Use this tool when you need current facts, external data, or to verify information that is not part of your internal knowledge. Also use this tool when the user explicitly asks to "search for", "look up", or "find information about" a topic. The results will include titles, snippets, and URLs of relevant search results.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'The precise and concise search query to be executed. Formulate this as a set of keywords or a short phrase that accurately reflects the information you are seeking. Avoid conversational language.' } }, required: ['query'] } } },,
             { type: 'function', function: { name: 'get_page_context', description: 'Get the context and content of the current webpage', parameters: { type: 'object', properties: {} } } }
         ];
     }
@@ -706,7 +705,6 @@ class OllamaService {
         try {
             switch (name) {
                 case 'web_search': return await this.performWebSearch(args.query);
-                case 'web_scrape': return await this.performWebScrape(args.url);
                 case 'get_page_context': return await this.extractPageContext(tabId);
                 default: return { success: false, error: `Unknown tool: ${name}` };
             }
@@ -746,27 +744,6 @@ class OllamaService {
             if (!response.ok) throw new Error(`Serper API error: ${response.status}`);
             const data = await response.json();
             return { success: true, result: data.organic || [] };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-
-    async performWebScrape(url) {
-        try {
-            const apiKey = this.settings.serperApiKey;
-            if (!apiKey) {
-                throw new Error('Serper API key not configured. Please add your API key in settings.');
-            }
-
-            const response = await fetch('https://scrape.serper.dev', { 
-                method: 'POST', 
-                headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ url })
-            });
-
-            if (!response.ok) throw new Error(`Serper scrape API error: ${response.status}`);
-            const text = await response.text();
-            return { success: true, result: text };
         } catch (error) {
             return { success: false, error: error.message };
         }
