@@ -23,7 +23,7 @@
             --accent-foreground: #18181b;
             --destructive: #ef4444;
             --destructive-foreground: #fafafa;
-            --border: #e4e4e7;
+            --border: #232425;
             --input: #e4e4e7;
             --ring: #09090b;
             --chart-1: #e76e50;
@@ -130,6 +130,27 @@
             border-width: 0;
             border-style: solid;
             border-color: #232425;
+        }
+
+        /* Force all border classes to use dark grey */
+        .border, .border-border, .border-b, .border-t, .border-l, .border-r {
+            border-color: #232425 !important;
+        }
+
+        /* Override any default border colors */
+        .ring, .ring-border {
+            --tw-ring-color: #232425 !important;
+            border-color: #232425 !important;
+        }
+
+        /* Comprehensive border color override */
+        div, span, button, input, textarea, select, header, main, section, article, aside, nav, footer {
+            border-color: #232425;
+        }
+
+        /* Override Tailwind CSS default border colors */
+        [class*="border"] {
+            border-color: #232425 !important;
         }
 
         body {
@@ -613,9 +634,9 @@
         }
         
         /* Enhanced textarea with subtle inset effect */
-        textarea, input[type="text"], input[type="email"], input[type="password"] {
+        textarea, input[type="text"], input[type="email"], input[type="password"], input, select {
             background: linear-gradient(145deg, var(--input), var(--background));
-            border: 1px solid var(--border);
+            border: 1px solid #232425 !important;
             border-radius: 10px;
             box-shadow: 
                 inset 0 2px 4px rgba(0, 0, 0, 0.06),
