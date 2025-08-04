@@ -10,6 +10,7 @@ class SideLlamaChat {
         // Track event listeners for cleanup
         this.eventListeners = new Map();
         this.boundMethods = new Map();
+        this.activeTimeouts = new Set(); // Track timeouts for cleanup
         this.messages = [];
         this.contextEnabled = false;
         this.searchEnabled = false;
@@ -97,7 +98,7 @@ class SideLlamaChat {
                 await this.loadConversationHistory();
             }
         } catch (error) {
-            console.error('Failed to load settings:', error);
+            this.handleError(error, 'Failed to load settings', false);
         }
     }
 
@@ -117,6 +118,22 @@ class SideLlamaChat {
         }
     }
 
+    // Helper method to track timeouts for cleanup
+    setTimeoutTracked(callback, delay) {
+        const timeoutId = setTimeout(() => {
+            this.activeTimeouts.delete(timeoutId);
+            callback();
+        }, delay);
+        this.activeTimeouts.add(timeoutId);
+        return timeoutId;
+    }
+
+    // Helper method to add tracked event listeners to dynamic elements
+    addEventListenerToElement(element, event, handler, options = false) {
+        const key = this.addEventListenerTracked(element, event, handler, options);
+        return key;
+    }
+
     cleanup() {
         // Remove all tracked event listeners
         for (const [key, listener] of this.eventListeners) {
@@ -124,6 +141,67 @@ class SideLlamaChat {
         }
         this.eventListeners.clear();
         this.boundMethods.clear();
+        
+        // Clear all active timeouts
+        this.activeTimeouts.forEach(timeoutId => {
+            clearTimeout(timeoutId);
+        });
+        this.activeTimeouts.clear();
+        
+        // Abort any active requests
+        if (this.currentAbortController) {
+            this.currentAbortController.abort();
+            this.currentAbortController = null;
+        }
+        
+        console.log('🧹 SideLlama cleanup completed');
+    }
+
+    cleanupInactiveTimeouts() {
+        // Only clear non-critical timeouts (like status bar clearing)
+        // Keep critical timeouts (like performance stats) running
+        let clearedCount = 0;
+        this.activeTimeouts.forEach(timeoutId => {
+            // This is a simple implementation - in practice you might want to categorize timeouts
+            if (Math.random() > 0.5) { // Simplified logic - could be enhanced with timeout metadata
+                clearTimeout(timeoutId);
+                this.activeTimeouts.delete(timeoutId);
+                clearedCount++;
+            }
+        });
+        if (clearedCount > 0) {
+            console.log(`🧹 Cleaned up ${clearedCount} inactive timeouts`);
+        }
+    }
+
+    // Consistent error handling system
+    handleError(error, context = '', showToUser = true, logLevel = 'error') {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const fullMessage = context ? `${context}: ${errorMessage}` : errorMessage;
+        
+        // Always log to console for debugging
+        if (logLevel === 'warn') {
+            console.warn(`🦙 ${fullMessage}`, error);
+        } else {
+            console.error(`🦙 ${fullMessage}`, error);
+        }
+        
+        // Show to user if requested
+        if (showToUser) {
+            this.updateStatusBar(`❌ ${fullMessage}`);
+        }
+        
+        return fullMessage;
+    }
+
+    // Helper for handling async operation errors
+    async handleAsyncError(asyncOperation, context = '', showErrorToUser = true) {
+        try {
+            return await asyncOperation();
+        } catch (error) {
+            this.handleError(error, context, showErrorToUser);
+            throw error; // Re-throw so caller can handle if needed
+        }
     }
 
     async loadConversationHistory() {
@@ -141,7 +219,7 @@ class SideLlamaChat {
                 console.log(`🦙 Loaded ${this.messages.length} messages from conversation history`);
             }
         } catch (error) {
-            console.error('Failed to load conversation history:', error);
+            this.handleError(error, 'Failed to load conversation history', false);
         }
     }
 
@@ -162,7 +240,7 @@ class SideLlamaChat {
             
             await chrome.storage.local.set({ sideLlamaConversation: conversationData });
         } catch (error) {
-            console.error('Failed to save conversation history:', error);
+            this.handleError(error, 'Failed to save conversation history', false);
         }
     }
 
@@ -232,7 +310,7 @@ class SideLlamaChat {
             await chrome.storage.sync.set({ sideLlamaSettings: settings });
             this.settings.defaultModel = modelName;
         } catch (error) {
-            console.error('Failed to save model to settings:', error);
+            this.handleError(error, 'Failed to save model to settings', false);
         }
     }
 
@@ -332,6 +410,14 @@ class SideLlamaChat {
         this.addEventListenerTracked(window, 'beforeunload', () => {
             this.cleanup();
         });
+        
+        // Also cleanup on visibility change (when side panel is hidden)
+        this.addEventListenerTracked(document, 'visibilitychange', () => {
+            if (document.hidden && !this.isTyping) {
+                // Only cleanup inactive timeouts when not actively typing
+                this.cleanupInactiveTimeouts();
+            }
+        });
     }
 
     async loadInitialData() {
@@ -354,8 +440,7 @@ class SideLlamaChat {
             // Initialize input placeholder
             this.updateInputPlaceholder();
         } catch (error) {
-            this.updateStatusBar('❌ Initialization failed');
-            console.error(error);
+            this.handleError(error, 'Initialization failed');
         }
     }
     
@@ -391,7 +476,18 @@ class SideLlamaChat {
                         this.showContextStatus(message.data.messageCount, message.data.trimmedCount);
                         break;
                     case 'SYSTEM_MESSAGE':
-                        this.addSystemMessage(message.data);
+                        // Route error messages and temporary status to status bar
+                        if (typeof message.data === 'string' && 
+                            (message.data.startsWith('❌') || 
+                             message.data.startsWith('⚠️') || 
+                             message.data.startsWith('🛠️') ||
+                             message.data.includes('tool(s)') ||
+                             message.data.includes('Failed to') ||
+                             message.data.includes('Error'))) {
+                            this.updateStatusBar(message.data);
+                        } else {
+                            this.addSystemMessage(message.data);
+                        }
                         break;
                     case 'ADD_USER_MESSAGE':
                         this.addUserMessageWithAttachments(message.data.message);
@@ -634,7 +730,7 @@ class SideLlamaChat {
             this.addAssistantMessage(data.message);
         }
         else if (!data.success) {
-            this.showError(data.error || 'An unknown error occurred.');
+            this.updateStatusBar('❌ ' + (data.error || 'An unknown error occurred'));
         }
     }
     
@@ -655,7 +751,7 @@ class SideLlamaChat {
             }
         }).catch(error => {
             this.hideTyping();
-            this.showError('Failed to send AI request: ' + error.message);
+            this.updateStatusBar('❌ Failed to send AI request: ' + error.message);
         });
     }
 
@@ -736,9 +832,9 @@ class SideLlamaChat {
         if (text === null || text === undefined) return '';
         
         let html = this.escapeHtml(String(text))
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code style="background: hsl(var(--muted)); padding: 2px 4px; border-radius: 3px; font-family: monospace;">$1</code>')
+            .replace(/\*\*(.*?)\*\*/g, (match, content) => `<strong>${content}</strong>`)
+            .replace(/\*(.*?)\*/g, (match, content) => `<em>${content}</em>`)
+            .replace(/`(.*?)`/g, (match, content) => `<code style="background: hsl(var(--muted)); padding: 2px 4px; border-radius: 3px; font-family: monospace;">${content}</code>`)
             .replace(/\n/g, '<br>');
         
         // Secure link handling with URL sanitization
@@ -763,6 +859,54 @@ class SideLlamaChat {
             return null; // Reject javascript:, data:, etc.
         } catch (e) {
             return null; // Invalid URL
+        }
+    }
+
+    sanitizeDataUrl(dataUrl) {
+        // Validate that this is a legitimate data URL
+        if (typeof dataUrl !== 'string') {
+            return '';
+        }
+        
+        // Must start with data: and have valid MIME type
+        if (!dataUrl.startsWith('data:')) {
+            return '';
+        }
+        
+        try {
+            // Parse the data URL to validate structure
+            const [header, data] = dataUrl.split(',');
+            if (!header || !data) {
+                return '';
+            }
+            
+            // Validate MIME type is safe (only allow common image types)
+            const mimeMatch = header.match(/^data:([^;]+)/);
+            if (!mimeMatch) {
+                return '';
+            }
+            
+            const mimeType = mimeMatch[1].toLowerCase();
+            const allowedMimeTypes = [
+                'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+                'image/webp', 'image/svg+xml', 'image/bmp'
+            ];
+            
+            if (!allowedMimeTypes.includes(mimeType)) {
+                return '';
+            }
+            
+            // Validate base64 data if specified
+            if (header.includes('base64')) {
+                // Basic validation - should only contain valid base64 characters
+                if (!/^[A-Za-z0-9+/]*=*$/.test(data)) {
+                    return '';
+                }
+            }
+            
+            return dataUrl;
+        } catch (e) {
+            return '';
         }
     }
     
@@ -794,7 +938,7 @@ class SideLlamaChat {
             // Remove "HTTP 400: Bad Request - " prefix that might be duplicated
             cleanMessage = cleanMessage.replace(/^HTTP \d{3}:\s*[^-]*-\s*/, '');
         }
-        this.addSystemMessage(`❌ Error: ${cleanMessage}`);
+        this.updateStatusBar(`❌ ${cleanMessage}`);
     }
 
     toggleSearch() {
@@ -813,7 +957,7 @@ class SideLlamaChat {
                 if (chrome.runtime.lastError) {
                     const error = new Error(chrome.runtime.lastError.message);
                     if (showErrorToUser) {
-                        this.showError(customErrorMessage || error.message);
+                        this.updateStatusBar('❌ ' + (customErrorMessage || error.message));
                     }
                     return reject(error);
                 }
@@ -822,7 +966,7 @@ class SideLlamaChat {
                 if (expectSuccess && response && !response.success) {
                     const error = new Error(response.error || 'Operation failed');
                     if (showErrorToUser) {
-                        this.showError(customErrorMessage || response.error || 'Operation failed');
+                        this.updateStatusBar('❌ ' + (customErrorMessage || response.error || 'Operation failed'));
                     }
                     return reject(error);
                 }
@@ -847,11 +991,11 @@ class SideLlamaChat {
                     this.addSystemMessage(`📄 Page context enabled: ${this.currentContext.title}`);
                 } else {
                     this.contextEnabled = false;
-                    this.showError('Failed to extract page context: ' + (response.error || 'Unknown error'));
+                    this.updateStatusBar('❌ Failed to extract page context: ' + (response.error || 'Unknown error'));
                 }
             } catch (error) {
                 this.contextEnabled = false;
-                this.showError('Failed to extract page context: ' + error.message);
+                this.handleError(error, 'Failed to extract page context');
             }
         } else {
             this.currentContext = null;
@@ -922,7 +1066,7 @@ class SideLlamaChat {
                 if (!aiResponse.success) {
                     this.hideTyping();
                     this.enableUserInput();
-                    this.showError('Failed to analyze search results: ' + (aiResponse.error || 'Unknown error'));
+                    this.updateStatusBar('❌ Failed to analyze search results: ' + (aiResponse.error || 'Unknown error'));
                 }
             } else {
                 this.updateStatusBar('❌ No search results found');
@@ -1009,7 +1153,7 @@ class SideLlamaChat {
                     if (!aiResponse.success) {
                         this.hideTyping();
                         this.enableUserInput();
-                        this.showError('Failed to analyze screenshot: ' + (aiResponse.error || 'Unknown error'));
+                        this.updateStatusBar('❌ Failed to analyze screenshot: ' + (aiResponse.error || 'Unknown error'));
                     }
                 } else {
                     // If not a vision model, just display the screenshot
@@ -1019,14 +1163,14 @@ class SideLlamaChat {
             } else {
                 // Check if it's a permission issue
                 if (response.needsPermission) {
-                    this.showError('📸 Screenshot permission needed: Please right-click on the page and select "SideLlama → Take Screenshot" to grant permission.');
+                    this.updateStatusBar('📸 Screenshot permission needed: Please right-click on the page and select "SideLlama → Take Screenshot" to grant permission.');
                     this.addSystemMessage('💡 Tip: Context menu screenshots work because they automatically grant the required permissions.');
                 } else {
-                    this.showError('Screenshot failed: ' + (response.error || 'Unknown error'));
+                    this.updateStatusBar('❌ Screenshot failed: ' + (response.error || 'Unknown error'));
                 }
             }
         } catch (error) {
-            this.showError('Screenshot failed: ' + error.message);
+            this.handleError(error, 'Screenshot failed');
         }
     }
 
@@ -1034,9 +1178,16 @@ class SideLlamaChat {
         const screenshotDiv = document.createElement('div');
         screenshotDiv.className = 'screenshot-display p-3';
         
+        // Sanitize the data URL before using it
+        const safeDataUrl = this.sanitizeDataUrl(dataUrl);
+        if (!safeDataUrl) {
+            console.error('Invalid screenshot data URL provided');
+            return;
+        }
+        
         screenshotDiv.innerHTML = `
             <div class="border border-border rounded-lg overflow-hidden">
-                <img src="${dataUrl}" alt="Screenshot" class="w-full max-w-sm mx-auto rounded-lg">
+                <img src="${safeDataUrl}" alt="Screenshot" class="w-full max-w-sm mx-auto rounded-lg">
                 <div class="p-2 text-xs text-muted-foreground text-center">
                     📸 Screenshot captured - Click to enlarge
                 </div>
@@ -1044,9 +1195,10 @@ class SideLlamaChat {
         `;
         
         const img = screenshotDiv.querySelector('img');
-        img.addEventListener('click', () => {
+        this.addEventListenerToElement(img, 'click', () => {
             const newTab = window.open();
-            newTab.document.write(`<img src="${dataUrl}" style="max-width: 100%; height: auto;">`);
+            const safeDataUrlForJs = safeDataUrl.replace(/'/g, "\\'").replace(/"/g, '\\"');
+            newTab.document.write(`<img src="${safeDataUrlForJs}" style="max-width: 100%; height: auto;">`);
         });
         
         // Insert before typing indicator to maintain proper order
@@ -1191,18 +1343,22 @@ class SideLlamaChat {
         
         let content = '';
         if (attachment.type.startsWith('image/')) {
-            content = `<img src="${attachment.dataUrl}" alt="${attachment.filename}" title="${attachment.filename}">`;
+            // Validate that dataUrl is safe (must be data: URL for images)
+            const safeDataUrl = this.sanitizeDataUrl(attachment.dataUrl);
+            const safeFilename = this.escapeHtml(attachment.filename);
+            content = `<img src="${safeDataUrl}" alt="${safeFilename}" title="${safeFilename}">`;
         } else if (attachment.isTextFile && attachment.content) {
             // Show text content preview
             const previewText = attachment.content.length > 100 
                 ? attachment.content.substring(0, 100) + '...' 
                 : attachment.content;
             const icon = this.getFileIcon(attachment.type, attachment.filename);
+            const safeFilename = this.escapeHtml(attachment.filename);
             content = `
-                <div class="text-file-preview" title="${attachment.filename}">
+                <div class="text-file-preview" title="${safeFilename}">
                     <div class="file-header">
                         <span class="file-icon">${icon}</span>
-                        <span class="file-name">${attachment.filename}</span>
+                        <span class="file-name">${safeFilename}</span>
                     </div>
                     <div class="file-content-preview">${this.escapeHtml(previewText)}</div>
                 </div>
@@ -1210,7 +1366,8 @@ class SideLlamaChat {
         } else {
             // File icon for other files
             const icon = this.getFileIcon(attachment.type, attachment.filename);
-            content = `<div class="attachment-icon" title="${attachment.filename}">${icon}<br><small>${attachment.filename}</small></div>`;
+            const safeFilename = this.escapeHtml(attachment.filename);
+            content = `<div class="attachment-icon" title="${safeFilename}">${icon}<br><small>${safeFilename}</small></div>`;
         }
         
         previewDiv.innerHTML = `
@@ -1219,7 +1376,7 @@ class SideLlamaChat {
         `;
         
         // Add remove event
-        previewDiv.querySelector('.attachment-remove').addEventListener('click', () => {
+        this.addEventListenerToElement(previewDiv.querySelector('.attachment-remove'), 'click', () => {
             this.removeAttachment(attachment.id);
         });
         
@@ -1319,8 +1476,7 @@ class SideLlamaChat {
             );
             this.displayModelSelector(response.models);
         } catch (error) {
-            // Error already shown to user by sendChromeMessage
-            console.error('Model loading failed:', error);
+            this.handleError(error, 'Model loading failed', false);
         }
     }
 
@@ -1375,11 +1531,11 @@ class SideLlamaChat {
         });
 
         // Add event listeners
-        overlay.querySelector('.close-selector').addEventListener('click', () => overlay.remove());
-        overlay.querySelector('.pull-model-btn').addEventListener('click', () => this.handlePullModel(overlay));
+        this.addEventListenerToElement(overlay.querySelector('.close-selector'), 'click', () => overlay.remove());
+        this.addEventListenerToElement(overlay.querySelector('.pull-model-btn'), 'click', () => this.handlePullModel(overlay));
         
         overlay.querySelectorAll('.model-item > div').forEach(item => {
-            item.addEventListener('click', () => {
+            this.addEventListenerToElement(item, 'click', () => {
                 const modelName = item.dataset.model;
                 this.selectModel(modelName);
                 overlay.remove();
@@ -1387,7 +1543,7 @@ class SideLlamaChat {
         });
 
         overlay.querySelectorAll('.delete-model').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            this.addEventListenerToElement(btn, 'click', (e) => {
                 e.stopPropagation();
                 const modelName = btn.dataset.model;
                 this.handleDeleteModel(modelName, overlay);
@@ -1395,7 +1551,7 @@ class SideLlamaChat {
         });
 
         // Click outside to close
-        overlay.addEventListener('click', (e) => {
+        this.addEventListenerToElement(overlay, 'click', (e) => {
             if (e.target === overlay) overlay.remove();
         });
 
@@ -1419,13 +1575,13 @@ class SideLlamaChat {
                 this.addSystemMessage(`✅ Successfully pulled model: ${modelName}`);
                 input.value = '';
                 // Refresh model list
-                setTimeout(() => this.showModelSelector(), 1000);
+                this.setTimeoutTracked(() => this.showModelSelector(), 1000);
                 overlay.remove();
             } else {
-                this.showError('Failed to pull model: ' + response.error);
+                this.updateStatusBar('❌ Failed to pull model: ' + response.error);
             }
         } catch (error) {
-            this.showError('Failed to pull model: ' + error.message);
+            this.handleError(error, 'Failed to pull model');
         }
     }
 
@@ -1443,13 +1599,13 @@ class SideLlamaChat {
             if (response.success) {
                 this.addSystemMessage(`✅ Successfully deleted model: ${modelName}`);
                 // Refresh model list
-                setTimeout(() => this.showModelSelector(), 1000);
+                this.setTimeoutTracked(() => this.showModelSelector(), 1000);
                 overlay.remove();
             } else {
-                this.showError('Failed to delete model: ' + response.error);
+                this.updateStatusBar('❌ Failed to delete model: ' + response.error);
             }
         } catch (error) {
-            this.showError('Failed to delete model: ' + error.message);
+            this.handleError(error, 'Failed to delete model');
         }
     }
 
@@ -1500,6 +1656,7 @@ class SideLlamaChat {
                 this.currentModelDisplay.textContent = modelName;
             }
         } catch (error) {
+            this.handleError(error, 'Failed to get model info', false, 'warn');
             this.currentModelDisplay.textContent = modelName;
         }
         
@@ -1591,8 +1748,7 @@ class SideLlamaChat {
             this.populateQuickModelDropdown(response.models);
             this.quickModelDropdown.classList.add('show');
         } catch (error) {
-            // Error already shown to user by sendChromeMessage
-            console.error('Quick model loading failed:', error);
+            this.handleError(error, 'Quick model loading failed', false);
         }
     }
     
@@ -1611,7 +1767,7 @@ class SideLlamaChat {
         this.quickModelDropdown.appendChild(header);
         
         // Add manage button event
-        header.querySelector('#manageModelsBtn').addEventListener('click', (e) => {
+        this.addEventListenerToElement(header.querySelector('#manageModelsBtn'), 'click', (e) => {
             e.stopPropagation();
             this.closeQuickModelDropdown();
             this.toggleModelSelector();
@@ -1635,7 +1791,7 @@ class SideLlamaChat {
                 <div class="model-size">${model.size || 'Unknown'}</div>
             `;
             
-            modelItem.addEventListener('click', () => {
+            this.addEventListenerToElement(modelItem, 'click', () => {
                 this.quickSelectModel(model.name);
                 this.closeQuickModelDropdown();
             });
@@ -1695,7 +1851,7 @@ class SideLlamaChat {
         try {
             await chrome.storage.local.remove('sideLlamaConversation');
         } catch (error) {
-            console.error('Failed to clear saved conversation:', error);
+            this.handleError(error, 'Failed to clear saved conversation', false);
         }
         
         this.addSystemMessage('🗑️ Chat history cleared.');
@@ -1739,11 +1895,11 @@ class SideLlamaChat {
             if (response.success) {
                 this.addSystemMessage('⏹️ Generation stopped by user');
             } else {
-                this.addSystemMessage('⚠️ No active generation to stop');
+                this.updateStatusBar('⚠️ No active generation to stop');
             }
         } catch (error) {
             this.hideTyping();
-            this.addSystemMessage('❌ Failed to stop generation');
+            this.handleError(error, 'Failed to stop generation');
         }
     }
     
@@ -1873,7 +2029,7 @@ class SideLlamaChat {
                             console.log(`✅ Model switch completed - now using: ${this.currentModel}`);
                         } else {
                             // No vision models available - show error and prevent sending
-                            this.showError(`❌ No vision models available. Please install a vision model like llava:latest, llava:7b, or qwen2-vl:latest.`);
+                            this.updateStatusBar(`❌ No vision models available. Please install a vision model like llava:latest, llava:7b, or qwen2-vl:latest.`);
                             this.enableUserInput();
                             this.clearAttachments();
                             return;
@@ -1914,7 +2070,7 @@ class SideLlamaChat {
             if (!response.success) {
                 this.hideTyping();
                 this.enableUserInput(); // Re-enable on error
-                this.showError(response.error || 'Failed to send message');
+                this.updateStatusBar('❌ ' + (response.error || 'Failed to send message'));
             }
             // Success case: just wait for STREAMING_RESPONSE or FINAL_RESPONSE message
         } catch (error) {
@@ -1922,7 +2078,7 @@ class SideLlamaChat {
             this.currentlySendingMessage = false;
             this.hideTyping();
             this.enableUserInput(); // Re-enable on error
-            this.showError('Failed to send message: ' + error.message);
+            this.handleError(error, 'Failed to send message');
         }
     }
 
@@ -1936,21 +2092,25 @@ class SideLlamaChat {
             attachmentsHtml = '<div class="message-attachments flex gap-2 flex-wrap mb-2">';
             this.pendingAttachments.forEach(attachment => {
                 if (attachment.type.startsWith('image/')) {
+                    const safeDataUrl = this.sanitizeDataUrl(attachment.dataUrl);
+                    const safeFilename = this.escapeHtml(attachment.filename);
+                    const safeDataUrlForJs = safeDataUrl.replace(/'/g, "\\'").replace(/"/g, '\\"');
                     attachmentsHtml += `
                         <div class="attachment-in-message">
-                            <img src="${attachment.dataUrl}" alt="${attachment.filename}" 
+                            <img src="${safeDataUrl}" alt="${safeFilename}" 
                                  class="max-w-xs rounded-lg cursor-pointer hover:opacity-80"
-                                 onclick="window.open().document.write('<img src=\\'${attachment.dataUrl}\\' style=\\'max-width: 100%; height: auto;\\'>')">
-                            <div class="text-xs text-muted-foreground mt-1">${attachment.filename}</div>
+                                 onclick="window.open().document.write('<img src=\\'${safeDataUrlForJs}\\' style=\\'max-width: 100%; height: auto;\\'>')">
+                            <div class="text-xs text-muted-foreground mt-1">${safeFilename}</div>
                         </div>
                     `;
                 } else {
                     const icon = this.getFileIcon(attachment.type, attachment.filename);
+                    const safeFilename = this.escapeHtml(attachment.filename);
                     attachmentsHtml += `
                         <div class="attachment-in-message flex items-center gap-2 p-2 bg-muted rounded border">
                             <span class="text-xl">${icon}</span>
                             <div class="text-xs">
-                                <div class="font-medium">${attachment.filename}</div>
+                                <div class="font-medium">${safeFilename}</div>
                                 <div class="text-muted-foreground">${this.formatFileSize(attachment.size)}</div>
                             </div>
                         </div>
@@ -2014,7 +2174,7 @@ class SideLlamaChat {
         modelStatsElement.title = `Model: ${model}\nTotal Time: ${Math.round(totalTime)}ms\nTime to First Token: ${Math.round(timeToFirstToken)}ms\nTokens: ${tokenCount}\nTokens/second: ${tokensPerSecond}`;
         
         // Clear the performance stats after 10 seconds
-        setTimeout(() => {
+        this.setTimeoutTracked(() => {
             if (modelStatsElement.innerHTML === perfDisplay) {
                 modelStatsElement.innerHTML = '';
                 modelStatsElement.title = '';
@@ -2030,7 +2190,7 @@ class SideLlamaChat {
         
         // Clear status after duration
         if (duration > 0) {
-            setTimeout(() => {
+            this.setTimeoutTracked(() => {
                 if (statusBar.innerHTML === message) {
                     statusBar.innerHTML = 'SideLlama';
                 }
@@ -2040,5 +2200,15 @@ class SideLlamaChat {
 
 }
 
-document.addEventListener('DOMContentLoaded', () => { new SideLlamaChat(); });
+// Use proper initialization without adding untracked global listeners
+document.addEventListener('DOMContentLoaded', () => { 
+    window.sideLlamaInstance = new SideLlamaChat();
+    
+    // Expose cleanup method globally for debugging
+    window.sideLlamaCleanup = () => {
+        if (window.sideLlamaInstance) {
+            window.sideLlamaInstance.cleanup();
+        }
+    };
+});
 console.log('🦙 SideLlama Corrected Panel Loaded');

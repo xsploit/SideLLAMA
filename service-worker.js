@@ -998,7 +998,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 return await ollamaService.extractPageContext(tabs[0].id);
             case 'WEB_SEARCH':
                 const searchResult = await ollamaService.performWebSearch(request.query);
-                return { success: searchResult.success, results: searchResult.result || [] };
+                return { success: searchResult.success, results: searchResult.result || [], error: searchResult.error };
             case 'TAKE_SCREENSHOT':
                 // Get the current active tab to ensure proper context
                 const currentTabs = await chrome.tabs.query({ active: true, currentWindow: true });
