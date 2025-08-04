@@ -635,6 +635,14 @@ class SideLlamaChat {
             }
             
             if (data.done) {
+                // Check if this is a tool call interruption or actual completion
+                if (data.toolCallsDetected) {
+                    // Tool calls detected - pause streaming but don't finish
+                    // The same streaming container will be reused after tool execution
+                    console.log('🔧 Tool calls detected - pausing streaming in current container');
+                    return;
+                }
+                
                 // Streaming is complete - re-render with full markdown and cleanup
                 if (this.streamingContent) {
                     this.streamingMessageElement.innerHTML = this.formatText(this.streamingContent, false);

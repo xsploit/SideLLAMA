@@ -646,6 +646,15 @@ class OllamaService {
                             }
                             
                             if (toolCalls.length > 0) {
+                                // Signal that tool calls were detected so streaming pauses instead of finishing
+                                this.sendToSidePanel({ 
+                                    type: 'STREAMING_CHUNK', 
+                                    data: { 
+                                        done: true, 
+                                        toolCallsDetected: true 
+                                    } 
+                                });
+                                
                                 await this.handleToolCalls(toolCalls, originalMessages, model, tabId);
                             }
                             return;
