@@ -458,7 +458,7 @@ class SideLlamaSettings {
         }
 
         const modelElements = models.map(model => {
-            const memoryUsage = this.formatBytes(model.size_vram || model.size || 0);
+            const memoryUsage = SharedUtils.formatBytes(model.size_vram || model.size || 0);
             const duration = model.expires_at ? this.formatDuration(new Date(model.expires_at) - new Date()) : 'Indefinite';
             
             return `
@@ -475,11 +475,6 @@ class SideLlamaSettings {
         }).join('');
 
         this.runningModelsList.innerHTML = modelElements;
-    }
-
-    formatBytes(bytes) {
-        // Use shared utility to eliminate code duplication
-        return SharedUtils.formatBytes(bytes);
     }
 
     formatDuration(ms) {
