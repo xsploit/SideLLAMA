@@ -1422,18 +1422,17 @@ class SideLlamaChat {
         previewDiv.dataset.attachmentId = attachment.id;
         
         let content = '';
+        const safeFilename = this.escapeHtml(attachment.filename);
         if (attachment.type.startsWith('image/')) {
             // Validate that dataUrl is safe (must be data: URL for images)
             const safeDataUrl = this.sanitizeDataUrl(attachment.dataUrl);
-            const safeFilename = this.escapeHtml(attachment.filename);
             content = `<img src="${safeDataUrl}" alt="${safeFilename}" title="${safeFilename}">`;
         } else if (attachment.isTextFile && attachment.content) {
             // Show text content preview
-            const previewText = attachment.content.length > 100 
-                ? attachment.content.substring(0, 100) + '...' 
+            const previewText = attachment.content.length > 100
+                ? attachment.content.substring(0, 100) + '...'
                 : attachment.content;
             const icon = this.getFileIcon(attachment.type, attachment.filename);
-            const safeFilename = this.escapeHtml(attachment.filename);
             content = `
                 <div class="text-file-preview" title="${safeFilename}">
                     <div class="file-header">
@@ -1446,7 +1445,6 @@ class SideLlamaChat {
         } else {
             // File icon for other files
             const icon = this.getFileIcon(attachment.type, attachment.filename);
-            const safeFilename = this.escapeHtml(attachment.filename);
             content = `<div class="attachment-icon" title="${safeFilename}">${icon}<br><small>${safeFilename}</small></div>`;
         }
         
