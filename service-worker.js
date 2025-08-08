@@ -232,7 +232,7 @@ class OllamaService {
             const enhancedModels = (data.models || []).map(model => ({
                 ...model,
                 displayName: model.name,
-                size: this.formatBytes(model.size),
+                size: SharedUtils.formatBytes(model.size),
                 capabilities: this.getModelCapabilities(model),
                 family: model.details?.family || 'unknown',
                 parameterSize: model.details?.parameter_size || 'unknown'
@@ -261,11 +261,6 @@ class OllamaService {
     isThinkingModel(modelName) {
         // Use shared utility to eliminate code duplication
         return ModelUtils.isThinkingModel(modelName);
-    }
-
-    formatBytes(bytes) {
-        // Use shared utility to eliminate code duplication
-        return SharedUtils.formatBytes(bytes);
     }
 
     async pullModel(modelName, progressCallback = null) {
